@@ -1,0 +1,151 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE:1024MB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:1024MB}
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/duanju?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:root}
+#     数据库密码,必须通过环境变量 DB_PASSWORD 注入;未配置时 SecurityStartupValidator 会阻止启动
+    password: ${DB_PASSWORD:Root@123456}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+duanju:
+  auth:
+    # JWT 签名密钥,生产必须通过环境变量 DUANJU_AUTH_SECRET 注入 (至少 32 字符随机串)
+    # 下方默认值仅用于本地开发,SecurityStartupValidator 会在 prod profile 下阻止启动
+    secret: ${DUANJU_AUTH_SECRET:dev-only-do-not-use-in-production-please-change-it-2024}
+    token-ttl-seconds: ${DUANJU_TOKEN_TTL_SECONDS:604800}
+    refresh-token-ttl-seconds: ${DUANJU_REFRESH_TOKEN_TTL_SECONDS:2592000}
+    captcha-ttl-seconds: ${DUANJU_CAPTCHA_TTL_SECONDS:300}
+    login:
+      # 同一 IP 最大登录失败次数,达到后临时封禁 (防撞库扫描)
+      max-fail-by-ip: ${DUANJU_LOGIN_MAX_FAIL_BY_IP:20}
+      # 同一账户最大登录失败次数,达到后锁定 (防暴力破解)
+      max-fail-by-user: ${DUANJU_LOGIN_MAX_FAIL_BY_USER:5}
+      # 锁定时长 (分钟)
+      lock-minutes: ${DUANJU_LOGIN_LOCK_MINUTES:15}
+  cors:
+    # 允许跨域的前端域名,逗号分隔;生产必须配置,如 https://app.example.com,https://admin.example.com
+    # 为空时自动放行 localhost (仅限开发环境)
+    allowed-origins: ${DUANJU_CORS_ALLOWED_ORIGINS:}
+  ad-reward:
+    # 每用户每日广告奖励上限
+    daily-limit: ${DUANJU_AD_REWARD_DAILY_LIMIT:10}
+    # 两次广告奖励最小间隔秒数 (防脚本快速刷)
+    cooldown-seconds: ${DUANJU_AD_REWARD_COOLDOWN_SECONDS:30}
+  storage:
+    provider: ${DUANJU_STORAGE_PROVIDER:local}
+    public-base-url: ${DUANJU_STORAGE_PUBLIC_BASE_URL:http://127.0.0.1:8080/uploads}
+    local-upload-dir: ${DUANJU_STORAGE_LOCAL_UPLOAD_DIR:backed/uploads}
+  apple-iap:
+    enabled: ${APPLE_IAP_ENABLED:false}
+    bundle-id: ${APPLE_BUNDLE_ID:}
+    app-apple-id: ${APPLE_APP_APPLE_ID:0}
+    issuer-id: ${APPLE_ISSUER_ID:}
+    key-id: ${APPLE_KEY_ID:}
+    # 多行 PEM 私钥;生产应从环境变量或文件注入,不要硬编码
+    private-key: ${APPLE_PRIVATE_KEY:}
+    environment: ${APPLE_ENVIRONMENT:SANDBOX}
+    # Apple Server Notification V2 接收端点鉴权 token (自定义,由你配置到 App Store Connect)
+    webhook-auth-token: ${APPLE_WEBHOOK_AUTH_TOKEN:}
+  stripe:
+    # 是否启用 Stripe Web 支付
+    enabled: ${STRIPE_ENABLED:false}
+    # Stripe 账号 Secret Key (sk_ 开头),生产必须通过环境变量注入,禁止写进仓库
+    secret-key: ${STRIPE_SECRET_KEY:}
+    # Stripe Webhook 签名密钥 (whsec_ 开头),用于校验 Stripe-Signature header
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    # 支付成功后前端跳转地址 (Checkout Session success_url,会追加 ?orderNo=xxx&status=success)
+    success-url: ${STRIPE_SUCCESS_URL:}
+    # 用户取消支付后跳转地址 (cancel_url,会追加 ?orderNo=xxx&status=cancelled)
+    cancel-url: ${STRIPE_CANCEL_URL:}
+  paypal:
+    # 是否启用 PayPal Web 支付
+    enabled: ${PAYPAL_ENABLED:false}
+    # PayPal Developer Console → Apps → App Credentials → Client ID
+    client-id: ${PAYPAL_CLIENT_ID:}
+    # PayPal Developer Console → Apps → App Credentials → Secret
+    client-secret: ${PAYPAL_CLIENT_SECRET:}
+    # PayPal Webhook ID,用于验证 webhook 事件来源
+    webhook-id: ${PAYPAL_WEBHOOK_ID:}
+    # PayPal API 基础路径 (沙盒: https://api-m.sandbox.paypal.com, 生产: https://api-m.paypal.com)
+    base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}
+    # 支付成功后前端跳转地址,会追加 ?orderNo=xxx&status=success
+    success-url: ${PAYPAL_SUCCESS_URL:}
+    # 用户取消支付后跳转地址,会追加 ?orderNo=xxx&status=cancelled
+    cancel-url: ${PAYPAL_CANCEL_URL:}
+  google-play:
+    # 是否启用 Google Play IAB (本地验签 + RTDN 被动接收)
+    enabled: ${GOOGLE_PLAY_ENABLED:false}
+    # Google Play Console → 设置 → 开发者账号 → 应用的包名
+    package-name: ${GOOGLE_PLAY_PACKAGE_NAME:}
+    # Google Play Console → Monetization setup → Licensing → Public key (Base64 编码)
+    # 用于本地校验 INAPP_PURCHASE_DATA 的 SIGNATURE 字段 (RSA/SHA1 with PKCS#1 v1.5)
+    public-key-base64: ${GOOGLE_PLAY_PUBLIC_KEY_BASE64:}
+    # Google RTDN Webhook 鉴权 token (自定义,由反向代理层注入到 X-Duanju-Webhook-Token header)
+    webhook-auth-token: ${GOOGLE_PLAY_WEBHOOK_AUTH_TOKEN:}
+    # 订单环境标记:PRODUCTION 或 SANDBOX (沙盒测试时使用 SANDBOX)
+    environment: ${GOOGLE_PLAY_ENVIRONMENT:PRODUCTION}
+    # 是否启用 Developer API 二次验签 (androidpublisher.purchases.products.get)
+    # 生产环境强烈建议开启,通过 Google 官方 API 验证 purchaseToken 真实性
+    developer-api-verify: ${GOOGLE_PLAY_DEVELOPER_API_VERIFY:false}
+    # Google Service Account JSON (从 Google Cloud Console → IAM & Admin → Service Accounts → 创建 JSON key 下载,完整 JSON 文本)
+    # 必须在 Google Play Console → Users and permissions 添加该 Service Account (邮箱) 并授予 Viewer 及以上权限,否则 purchases.products.get 返回 401/403
+    # 生产通过环境变量 GOOGLE_PLAY_SERVICE_ACCOUNT_JSON 注入,JSON 内含 \n 会被 Spring 自动解析
+    service-account-json: ${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:}
+  cloudflare:
+    # 是否启用 Cloudflare Stream 视频托管
+    enabled: ${CLOUDFLARE_ENABLED:false}
+    # Cloudflare Account ID
+    account-id: ${CLOUDFLARE_ACCOUNT_ID:}
+    # Cloudflare API Token (Create API Token → Edit Cloudflare Stream)
+    api-token: ${CLOUDFLARE_API_TOKEN:}
+    # 签名 URL 密钥 (Signing Key),用于生成 expiring signed delivery URLs
+    # 在 Cloudflare Dashboard → Stream → Signing keys 中生成
+    signing-key: ${CLOUDFLARE_SIGNING_KEY:}
+    # 签名 URL 有效期 (秒),默认 3600 秒 (1小时)
+    signed-url-ttl-seconds: ${CLOUDFLARE_SIGNED_URL_TTL_SECONDS:3600}
+    # HLS 播放列表路径前缀 (Stream 播放器 HLS 端点)
+    hls-path-prefix: ${CLOUDFLARE_HLS_PATH_PREFIX:https://watch.cloudflarestream.com}
+    # 上传超时 (秒)
+    upload-timeout-seconds: ${CLOUDFLARE_UPLOAD_TIMEOUT_SECONDS:3600}
+    # 允许上传的 MIME 类型
+    allowed-mime-types: video/mp4,video/x-m4v,video/webm,video/quicktime
+    # Webhook 鉴权 Token (在 Cloudflare Dashboard → Stream → Settings → Webhooks 中配置 Bearer Token)
+    webhook-auth-token: ${CLOUDFLARE_WEBHOOK_AUTH_TOKEN:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # 只暴露指标端点,不暴露 env/heapdump/threaddump 等敏感端点
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    distribution:
+      # Apple IAP handleSubscribed 耗时直方图分桶 (用于 Prometheus histogram_quantile 计算 p50/p95/p99)
+      percentiles-histogram:
+        "apple.iap.subscribed.duration": true
+        "apple.iap.subscribed.map.duration": true
+        "apple.iap.subscribed.mark_paid.duration": true
+      # SLA 边界 (便于告警: p95 > 500ms 触发告警)
+      slo:
+        "apple.iap.subscribed.duration": 50ms,100ms,200ms,500ms,1s,2s
+        "apple.iap.subscribed.map.duration": 10ms,50ms,100ms,200ms
+        "apple.iap.subscribed.mark_paid.duration": 20ms,50ms,100ms,200ms,500ms
+

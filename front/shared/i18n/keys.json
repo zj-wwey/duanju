@@ -1,0 +1,89 @@
+{
+  "version": "2.0.0",
+  "namespaces": {
+    "common": {
+      "description": "通用 UI 文本",
+      "keys": ["back","loading","noDramas","noMatches","shortDrama","episodeTotal","serializing","freePreview","premiumEpisode","unlocked","free","points","loadMore","clearAll","delete","save","reset","status","checkinSuccess","close","cancel","processing","enabled","disabled","edit","actions","confirm","createSuccess","updateSuccess","deleteSuccess"]
+    },
+    "auth": {
+      "description": "登录/注册",
+      "keys": ["appName","loginTitle","loginSubtitle","titles","episodes","account","password","captcha","nickname","signIn","createAccount","registerSuccess","newAccount","existingAccount","accountPasswordRequired","adminLogin","userLogin","adminLoginSubtitle","userLoginSubtitle","adminOnly","registerDisabledForAdmin"]
+    },
+    "nav": {
+      "description": "导航栏",
+      "keys": ["aria","home","category","profile","search","checkin","logout","points","vip","announcements","feedback","recharge"]
+    },
+    "home": {
+      "description": "首页",
+      "keys": ["hot","discoverKicker","discoverTitle","modes.hot","modes.latest","modes.free","modes.long","modeDesc.hot","modeDesc.latest","modeDesc.free","modeDesc.long","selected","heroFallback","watchNow","library","trending","allCategories","previous","next","vipEntry","vipEntryDesc","rechargeEntry","rechargeEntryDesc","pointsBalance","pointsBalanceDesc"]
+    },
+    "category": {
+      "description": "分类筛选",
+      "keys": ["title","kicker","contentType","aiDrama","realDrama","background","theme","setting","audience","time","sort","options.all","options.modern","options.urban","options.ancient","options.rural","options.period","options.fantasySpace","options.workplace","options.republican","options.campus","options.palace","options.island","options.romance","options.femaleGrowth","options.brainHole","options.fantasy","options.xuanhuan","options.ancientRomance","options.warGod","options.palaceFight","options.xianxia","options.power","options.farming","options.ageLove","options.suspense","options.comedy","options.youth","options.republicanLove","options.revenge","options.maleLead","options.femaleLead","options.hiddenIdentity","options.rebirth","options.timeTravel","options.system","options.marriageFirst","options.family","options.ordinary","options.reunion","options.tycoon","options.wealthy","options.comeback","options.male","options.female","options.d7","options.d14","options.d30","options.d90","newest","hottest"]
+    },
+    "detail": {
+      "description": "短剧详情",
+      "keys": ["kicker","play","favorite","favorited","synopsis","noSynopsis","episodes","rule","recommend","favoriteAdded","favoriteRemoved"]
+    },
+    "player": {
+      "description": "播放器",
+      "keys": ["episode","intro","noIntro","episodes","autoNext","recommend","locked","unlock","unlockWhole","unlockSuccess"]
+    },
+    "profile": {
+      "description": "个人中心",
+      "keys": ["title","personal","password","history","favorites","orders","recharge","settings","profileDesc","passwordDesc","historyDesc","favoritesDesc","ordersDesc","rechargeDesc","settingsDesc","avatarAlt","avatarPreview","uploadAvatar","avatarHint","nickname","nicknamePlaceholder","username","phoneReserved","accountId","oldPassword","oldPasswordPlaceholder","newPassword","newPasswordPlaceholder","confirmPassword","confirmPasswordPlaceholder","confirmChange","lastWatched","cancelFavorite","emptyHistory","emptyFavorites","emptyOrders","emptyRecharge","orderNo","orderContent","pointsAmount","orderTime","rechargeTime","rechargePlan","payAmount","receivedPoints","pointOrder","pointRecharge","rechargeNow","recharging","rechargeSuccess","notice","autoNext","selectImage","nicknameRequired","profileSaved","passwordRequired","passwordLength","passwordMismatch","passwordReserved","passwordChanged","settingsSaved","localRemoved","historyCleared","favoriteRemoved","announcements","announcementsDesc","announcementEmpty","announcementReadAll","vipMember","vipMemberDesc","vipActive","vipExpired","vipDaysLeft","vipBuy","vipRecords","feedback","feedbackTitle","feedbackDesc","feedbackSubmit","feedbackList","feedbackEmpty","feedbackBug","feedbackSuggestion","feedbackConsultation","feedbackComplaint","feedbackOther","feedbackStatusPending","feedbackStatusReplied","feedbackStatusResolved","feedbackStatusClosed","feedbackReply","feedbackType","feedbackContent","feedbackPlaceholder","feedbackSubmitBtn","systemAnnouncement","activityAnnouncement","totalPoints","viewDetails","backToList","rechargePoints","openVip","viewAnnouncements"]
+    },
+    "announcement": {
+      "description": "公告",
+      "keys": ["title","empty","typeSystem","typeActivity"]
+    },
+    "feedback": {
+      "description": "反馈",
+      "keys": ["title","type","bug","suggestion","consultation","complaint","other","inputTitle","inputContent","placeholderTitle","placeholderContent","submit","submitSuccess","fillRequired"]
+    },
+    "vip": {
+      "description": "VIP 会员",
+      "keys": ["pageTitle","pageDesc","active","expired","notActive","notActiveDesc","daysLeft","expireDate","renew","buyNow","privileges","privilegeFree","privilegeHd","privilegeNoAd","privilegeUpdate","privilegeService","privilegeCache","selectPlan","buyPlan","buySuccess","typePoint","typeVip","typeBoth","daysDuration","myRecords","noRecords","noPlans","cancelled","typeTitle","levelBadge","exchangeEntry"]
+    },
+    "membership": {
+      "description": "会员等级",
+      "keys": ["title","currentLevel","levelProgress","toNextLevel","spendProgress","pointMultiplier","dailyFreeEpisodes","episodeDiscount","dramaDiscount","offlineCache","adFree","premiumSupport","birthdayGift","benefitsTitle","exchangeTitle","exchangeDays","exchangeBtn","exchangeConfirm","exchangeSuccess","levelNone","levelSilver","levelGold","levelDiamond","levelSource","levelSourceSpend","levelSourcePurchase","dailyFreeUsed","dailyFreeRemaining","dailyFreeResetAt","benefitDanmuStyle","historyTitle","noHistory"]
+    },
+    "shop": {
+      "description": "积分商城",
+      "keys": ["title","exchange","exchangeConfirm","exchangeSuccess","vipPrice","stock","records","deliveryStatus","pending","delivered","itemNotFound","itemOutOfStock","noItems","noRecords"]
+    },
+    "recharge": {
+      "description": "积分充值",
+      "keys": ["currentBalance","viewRecords","hideRecords","selectPlan","confirmPayment","payMethod","creditCard","paypal","paymentCancelled","wechatPay","alipay","totalAmount","confirmRecharge","rechargeSuccess","myRecords","noRecords","noPlans","bonusPoints","bonus","recharge","noticeTitle","notice1","notice2","notice3","points","pointsUnit","firstPurchaseBonus","levelPreview","willUpgrade","pointsExpireHint"]
+    },
+    "payment": {
+      "description": "支付",
+      "keys": ["method","creditCard","paypal","paymentCancelled"]
+    },
+    "orderStatus": {
+      "description": "订单状态",
+      "keys": ["PENDING","PAID","REFUNDED","CANCELLED","CLOSED"]
+    },
+    "language": {
+      "description": "语言",
+      "keys": ["label","current"]
+    },
+    "currencyRate": {
+      "description": "币种汇率",
+      "keys": ["kicker","title","addCurrency","refreshCache","totalCurrencies","enabledCurrencies","code","name","symbol","rateToUsd","decimals","locale","status","editCurrency","deleteConfirm","refreshSuccess"]
+    },
+    "autoRenewal": {
+      "description": "自动续费",
+      "keys": ["title","active","inactive","subscribe","cancel","nextChargeAt","failCount","subscribeSuccess","cancelSuccess","activePrompt"]
+    },
+    "error": {
+      "description": "错误消息",
+      "keys": ["alreadyCheckedIn","cooldown","dailyAdRewardLimit","dailyWatchRewardLimit","shareTooFrequent","dailyShareRewardLimit","dailyCommentRewardLimit","pointsMustBePositive","unsupportedExchange","dailyPurchaseLimit","monthlyPurchaseLimit","monthlySpendingLimit","refundTimeExceeded","refundUnlockExceeded"]
+    },
+    "admin": {
+      "description": "管理后台",
+      "keys": ["dashboard","contentAssets","userOperations","tradeCenter","dataCenter","systemSettings","dramaLibrary","episodeManagement","categoryConfig","recommendationsManagement","userPool","orderManagement","contentAnalytics","analytics","roles","logs","newDrama","newTitle","newEpisode","newCategory","newCategoryOption","filterOptions","id","name","sort","actions","edit","delete","yes","noText","title","cover","dramaName","dramaAsset","category","systemCategory","categoryGroup","categoryOptionName","free","no","storage","credits","videoUrl","selectTitle","localUpload","uploadSuccess","batchUpload","newDramaAsset","titles","episodes","name","sort","levelBadge"]
+    }
+  }
+}

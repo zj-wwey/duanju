@@ -1,0 +1,20 @@
+{
+  "name": "duanju-front",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix admin run dev",
+    "build": "npm --prefix admin run build",
+    "dev:all": "npm --prefix admin run dev",
+    "dev:admin": "npm --prefix admin run dev",
+    "build:admin": "npm --prefix admin run build",
+    "sync:i18n": "node ../scripts/sync-i18n.js",
+    "sync:i18n:data": "node ../scripts/sync-i18n.js data",
+    "sync:i18n:json": "node ../scripts/sync-i18n.js json",
+    "sync:i18n:validate": "node ../scripts/sync-i18n.js validate",
+    "i18n:export": "node ../scripts/export-translations.js",
+    "i18n:export:admin": "node ../scripts/export-translations.js --namespace admin",
+    "i18n:import": "node ../scripts/import-translations.js --file",
+    "i18n:import:dry-run": "node ../scripts/import-translations.js --file --dry-run"
+  }
+}

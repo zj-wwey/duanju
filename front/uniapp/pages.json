@@ -1,0 +1,174 @@
+{
+  "easycom": {
+    "^u-(.*)": "@/uview-ui/components/u-$1/u-$1.vue"
+  },
+  "pages": [
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "Sign in"
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "Short Drama",
+        "enablePullDownRefresh": true,
+        "navigationStyle": "custom",
+        "navigationBarBackgroundColor": "#000000",
+        "subNVues": [
+          {
+            "id": "indexOverlay",
+            "path": "pages/index/index_overlay.nvue",
+            "style": {
+              "background": "transparent",
+              "position": "absolute",
+              "top": "0px",
+              "left": "0px",
+              "right": "0px",
+              "bottom": "0px"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "path": "pages/theater/theater",
+      "style": {
+        "navigationBarTitleText": "Theater",
+        "enablePullDownRefresh": true,
+        "navigationBarBackgroundColor": "#F7F4ED",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/store/store",
+      "style": {
+        "navigationBarTitleText": "Store",
+        "navigationBarBackgroundColor": "#080A10",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/mine/mine",
+      "style": {
+        "navigationBarTitleText": "Profile"
+      }
+    },
+    {
+      "path": "pages/detail/detail",
+      "style": {
+        "navigationBarTitleText": "Drama Detail",
+        "navigationBarBackgroundColor": "#080A10",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/player/player",
+      "style": {
+        "navigationBarTitleText": "Player",
+        "navigationStyle": "custom",
+        "navigationBarBackgroundColor": "#000000",
+        "subNVues": [
+          {
+            "id": "playerOverlay",
+            "path": "pages/player/player_overlay.nvue",
+            "style": {
+              "background": "transparent",
+              "position": "absolute",
+              "top": "0px",
+              "left": "0px",
+              "right": "0px",
+              "bottom": "0px"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "path": "pages/category/category",
+      "style": {
+        "navigationBarTitleText": "Browse",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/recharge/recharge",
+      "style": {
+        "navigationBarTitleText": "Recharge"
+      }
+    },
+    {
+      "path": "pages/webview/webview",
+      "style": {
+        "navigationBarTitleText": "Payment"
+      }
+    },
+    {
+      "path": "pages/mine/favorites",
+      "style": {
+        "navigationBarTitleText": "My List"
+      }
+    },
+    {
+      "path": "pages/mine/history",
+      "style": {
+        "navigationBarTitleText": "Watch History"
+      }
+    },
+    {
+      "path": "pages/mine/profile-edit",
+      "style": {
+        "navigationBarTitleText": "Edit Profile"
+      }
+    },
+    {
+      "path": "pages/mine/settings",
+      "style": {
+        "navigationBarTitleText": "Settings"
+      }
+    },
+    {
+      "path": "pages/mine/orders",
+      "style": {
+        "navigationBarTitleText": "My Orders"
+      }
+    },
+    {
+      "path": "pages/mine/announcements",
+      "style": {
+        "navigationBarTitleText": "Announcements"
+      }
+    },
+    {
+      "path": "pages/mine/vip",
+      "style": {
+        "navigationBarTitleText": "VIP Member"
+      }
+    },
+    {
+      "path": "pages/mine/membership",
+      "style": {
+        "navigationBarTitleText": "Membership"
+      }
+    },
+    {
+      "path": "pages/mine/shop",
+      "style": {
+        "navigationBarTitleText": "Points Shop"
+      }
+    },
+    {
+      "path": "pages/mine/feedback",
+      "style": {
+        "navigationBarTitleText": "Feedback"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "Short Drama",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F8F8F8"
+  }
+}

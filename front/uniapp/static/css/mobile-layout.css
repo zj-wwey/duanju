@@ -1,0 +1,465 @@
+page,
+.page {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+view,
+text,
+button,
+input,
+textarea,
+image {
+  box-sizing: border-box;
+}
+
+button {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.title,
+.page-title,
+.section-title {
+  font-size: 34rpx !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0 !important;
+}
+
+.eyebrow,
+.kicker,
+.group-title,
+.section-action,
+.card-meta,
+.meta,
+.desc,
+.state,
+.empty,
+.loading {
+  font-size: 22rpx !important;
+  line-height: 1.42 !important;
+}
+
+.hero,
+.panel,
+.filter-panel,
+.card,
+.row,
+.item,
+.order-card,
+.package-card,
+.product-card,
+.record,
+.benefit-card,
+.feedback-card,
+.announcement-card {
+  border-radius: 18rpx !important;
+}
+
+.page-head {
+  padding: 12rpx 4rpx 18rpx !important;
+}
+
+.hero {
+  gap: 18rpx !important;
+  margin-bottom: 18rpx !important;
+  padding: 20rpx !important;
+}
+
+.section-head,
+.section-row {
+  margin: 24rpx 4rpx 14rpx !important;
+}
+
+.filter-panel,
+.panel {
+  padding: 18rpx !important;
+}
+
+.chip {
+  height: 52rpx !important;
+  padding: 0 20rpx !important;
+  font-size: 22rpx !important;
+}
+
+.chip.mini {
+  height: 46rpx !important;
+  padding: 0 18rpx !important;
+  font-size: 20rpx !important;
+}
+
+.search-input,
+.search-btn,
+.input,
+.primary,
+.ghost,
+.unlock-all,
+.play,
+.submit,
+.pay-button,
+.pay-ghost {
+  min-height: 0 !important;
+  height: 68rpx !important;
+  line-height: 68rpx !important;
+  font-size: 24rpx !important;
+}
+
+.search-input,
+.input {
+  padding-left: 20rpx !important;
+  padding-right: 20rpx !important;
+}
+
+.state,
+.empty,
+.loading {
+  padding-top: 56rpx !important;
+  padding-bottom: 56rpx !important;
+}
+
+.cover {
+  width: 170rpx !important;
+  height: 230rpx !important;
+}
+
+.card image {
+  height: 230rpx !important;
+}
+
+.poster image {
+  height: 220rpx !important;
+}
+
+.episode-grid {
+  gap: 10rpx !important;
+}
+
+.episode {
+  min-height: 86rpx !important;
+  padding: 12rpx !important;
+}
+
+.episode-no {
+  font-size: 24rpx !important;
+}
+
+.episode-title,
+.episode-status,
+.card-title,
+.poster text {
+  font-size: 22rpx !important;
+  line-height: 1.3 !important;
+  letter-spacing: 0 !important;
+}
+
+.avatar,
+.user-avatar {
+  width: 112rpx !important;
+  height: 112rpx !important;
+  line-height: 112rpx !important;
+  font-size: 44rpx !important;
+}
+
+.icon,
+.menu-icon,
+.quick-icon,
+.vip-badge {
+  width: 72rpx !important;
+  height: 72rpx !important;
+  line-height: 72rpx !important;
+  font-size: 32rpx !important;
+}
+
+.points-num,
+.balance-num,
+.price {
+  font-size: 40rpx !important;
+  line-height: 1.15 !important;
+}
+
+.ad-btn,
+.benefit,
+.setting-row,
+.order-card,
+.record,
+.feedback-item,
+.announcement-item {
+  padding: 20rpx 24rpx !important;
+}
+
+@media screen and (max-height: 680px) {
+  .title,
+  .page-title,
+  .section-title {
+    font-size: 30rpx !important;
+  }
+
+  .hero,
+  .panel,
+  .filter-panel {
+    padding: 16rpx !important;
+  }
+
+  .cover {
+    width: 150rpx !important;
+    height: 204rpx !important;
+  }
+
+  .card image,
+  .poster image {
+    height: 204rpx !important;
+  }
+
+  .search-input,
+  .search-btn,
+  .input,
+  .primary,
+  .ghost,
+  .unlock-all,
+  .play {
+    height: 62rpx !important;
+    line-height: 62rpx !important;
+  }
+}
+
+.theater-page,
+.store-page,
+.recharge-page,
+.category-page,
+.detail-page,
+.mine-page,
+.mine-subpage,
+.webview-page {
+  padding: 22rpx 20rpx 0 !important;
+}
+
+.theater-page .grid,
+.category-page .grid,
+.detail-page .recommend {
+  gap: 18rpx 12rpx !important;
+}
+
+.theater-page .grid,
+.category-page .grid,
+.detail-page .recommend {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+
+.theater-page .search-box {
+  gap: 10rpx !important;
+  margin-bottom: 14rpx !important;
+}
+
+.theater-page .filter-panel {
+  max-height: 232rpx !important;
+  overflow: hidden !important;
+}
+
+.theater-page .hero,
+.store-page .store-head,
+.category-page .head,
+.mine-page .page-head,
+.mine-subpage .page-head {
+  margin-bottom: 16rpx !important;
+}
+
+.store-page .store-head,
+.category-page .head,
+.mine-page .page-head,
+.mine-subpage .page-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.store-page .status-card,
+.store-page .vip-card,
+.recharge-page .balance-card,
+.mine-page .profile-card {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 20rpx !important;
+}
+
+.store-page .status-title,
+.store-page .vip-title,
+.mine-page .name,
+.recharge-page .balance {
+  font-size: 32rpx !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0 !important;
+}
+
+.store-page .tabs,
+.category-page .filter-bar,
+.theater-page .filter-bar {
+  margin-bottom: 12rpx !important;
+  white-space: nowrap !important;
+}
+
+.store-page .tab,
+.store-page .method,
+.recharge-page .method,
+.category-page .chip,
+.theater-page .chip {
+  height: 50rpx !important;
+  line-height: 50rpx !important;
+  padding: 0 18rpx !important;
+  font-size: 21rpx !important;
+}
+
+.store-page .product-grid,
+.recharge-page .plans {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14rpx !important;
+}
+
+.store-page .product-card,
+.store-page .wide-card,
+.store-page .order-row,
+.recharge-page .plan,
+.recharge-page .checkout,
+.recharge-page .order,
+.mine-page .item {
+  padding: 18rpx !important;
+}
+
+.store-page .product-name,
+.store-page .product-points,
+.store-page .product-price,
+.recharge-page .plan-name,
+.recharge-page .plan-points,
+.recharge-page .plan-price,
+.recharge-page .order-name {
+  font-size: 23rpx !important;
+  line-height: 1.32 !important;
+}
+
+.store-page .buy-btn,
+.store-page .status-btn,
+.recharge-page .pay-btn,
+.mine-page .login-btn {
+  height: 60rpx !important;
+  line-height: 60rpx !important;
+  font-size: 22rpx !important;
+  padding: 0 20rpx !important;
+}
+
+.recharge-page .balance-card {
+  margin-bottom: 20rpx !important;
+}
+
+.recharge-page .balance {
+  font-size: 42rpx !important;
+}
+
+.recharge-page .section-title {
+  margin: 22rpx 0 14rpx !important;
+}
+
+.mine-page .profile-card {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16rpx !important;
+  margin-bottom: 18rpx !important;
+}
+
+.mine-page .avatar-block,
+.mine-page .avatar,
+.mine-page .avatar-placeholder {
+  width: 104rpx !important;
+  height: 104rpx !important;
+  line-height: 104rpx !important;
+  font-size: 38rpx !important;
+}
+
+.mine-page .user-info {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.mine-page .points,
+.mine-page .level-badge {
+  font-size: 21rpx !important;
+}
+
+.mine-page .actions {
+  border-radius: 18rpx !important;
+  overflow: hidden !important;
+}
+
+.mine-page .item {
+  min-height: 0 !important;
+  height: 74rpx !important;
+}
+
+.mine-page .item-icon {
+  width: 44rpx !important;
+  height: 44rpx !important;
+  line-height: 44rpx !important;
+  font-size: 26rpx !important;
+}
+
+.mine-page .item-label,
+.mine-page .item-arrow {
+  font-size: 24rpx !important;
+}
+
+.detail-page .hero {
+  align-items: flex-start !important;
+}
+
+.detail-page .cover {
+  flex-shrink: 0 !important;
+}
+
+.detail-page .buttons {
+  gap: 10rpx !important;
+  margin-top: 14rpx !important;
+}
+
+.detail-page .episode-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.category-page .head {
+  margin-bottom: 14rpx !important;
+}
+
+.category-page .card image {
+  height: 240rpx !important;
+}
+
+.mine-subpage .card,
+.mine-subpage .row,
+.mine-subpage .record,
+.mine-subpage .package,
+.mine-subpage .item,
+.mine-subpage .form-card,
+.mine-subpage .feedback-card {
+  padding: 18rpx !important;
+}
+
+.mine-subpage .empty,
+.mine-subpage .loading,
+.mine-subpage .state {
+  padding: 52rpx 0 !important;
+}
+
+.mine-subpage .avatar,
+.mine-subpage .avatar-preview,
+.mine-subpage .avatar-placeholder {
+  width: 112rpx !important;
+  height: 112rpx !important;
+  line-height: 112rpx !important;
+  font-size: 42rpx !important;
+}
+
+.webview-page {
+  min-height: 100vh !important;
+}
+
+.webview-page .state {
+  padding: 56rpx 24rpx !important;
+}

@@ -1,0 +1,253 @@
+/* RTL Layout Support Utilities
+ * Applied when <html dir="rtl"> or <view dir="rtl"> is set
+ * Usage: import from main.js or App.vue
+ */
+
+:root {
+  --dir: ltr;
+  --flex-dir: row;
+  --flip: 1;
+  --margin-start: 0;
+  --margin-end: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+  --border-start: 0;
+  --border-end: 0;
+}
+
+[dir="rtl"] {
+  --dir: rtl;
+  --flex-dir: row-reverse;
+  --flip: -1;
+}
+
+[dir="ltr"] {
+  --dir: ltr;
+  --flex-dir: row;
+  --flip: 1;
+}
+
+/* ============================================================
+ * Logical Property Utilities
+ * Replace physical properties (left/right) with these
+ * ============================================================ */
+
+.margin-start-xs { margin-inline-start: 10upx; }
+.margin-start-sm { margin-inline-start: 20upx; }
+.margin-start { margin-inline-start: 30upx; }
+.margin-start-lg { margin-inline-start: 40upx; }
+.margin-start-xl { margin-inline-start: 50upx; }
+
+.margin-end-xs { margin-inline-end: 10upx; }
+.margin-end-sm { margin-inline-end: 20upx; }
+.margin-end { margin-inline-end: 30upx; }
+.margin-end-lg { margin-inline-end: 40upx; }
+.margin-end-xl { margin-inline-end: 50upx; }
+
+.padding-start-xs { padding-inline-start: 10upx; }
+.padding-start-sm { padding-inline-start: 20upx; }
+.padding-start { padding-inline-start: 30upx; }
+.padding-start-lg { padding-inline-start: 40upx; }
+
+.padding-end-xs { padding-inline-end: 10upx; }
+.padding-end-sm { padding-inline-end: 20upx; }
+.padding-end { padding-inline-end: 30upx; }
+.padding-end-lg { padding-inline-end: 40upx; }
+
+.border-start { border-inline-start-width: 1px; }
+.border-end { border-inline-end-width: 1px; }
+
+.inset-start-0 { inset-inline-start: 0; }
+.inset-end-0 { inset-inline-end: 0; }
+.inset-start-auto { inset-inline-start: auto; }
+.inset-end-auto { inset-inline-end: auto; }
+
+/* ============================================================
+ * Text Alignment
+ * ============================================================ */
+
+.text-start { text-align: start; }
+.text-end { text-align: end; }
+
+/* ============================================================
+ * Flex Direction Utilities
+ * ============================================================ */
+
+.flex-row { flex-direction: row; }
+.flex-row-reverse { flex-direction: row-reverse; }
+.flex-col { flex-direction: column; }
+.flex-col-reverse { flex-direction: column-reverse; }
+
+.flex-start { justify-content: flex-start; }
+.flex-end { justify-content: flex-end; }
+.flex-between { justify-content: space-between; }
+.flex-around { justify-content: space-around; }
+.flex-center { justify-content: center; }
+
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+.items-center { align-items: center; }
+
+/* ============================================================
+ * Float Replacement (use flex instead of float for RTL)
+ * ============================================================ */
+
+.float-start { float: inline-start; }
+.float-end { float: inline-end; }
+.clear-float { clear: both; }
+
+/* ============================================================
+ * Transform Flip (for icons, arrows, chevrons)
+ * Usage: .icon-rtl-flip when dir=rtl
+ * ============================================================ */
+
+[dir="rtl"] .icon-rtl-flip {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .arrow-left,
+[dir="rtl"] .chevron-left {
+  transform: rotate(180deg);
+}
+
+[dir="rtl"] .arrow-right,
+[dir="rtl"] .chevron-right {
+  transform: rotate(180deg);
+}
+
+/* ============================================================
+ * Slider / Tabs Bar RTL Adjustments
+ * When using absolute-positioned slider bars,
+ * flip the direction in RTL
+ * ============================================================ */
+
+[dir="rtl"] .u-tab-bar,
+[dir="rtl"] .u-scroll-bar {
+  /* The slider bar position calculation should be inverted in JS */
+}
+
+/* ============================================================
+ * Background Position Flip
+ * ============================================================ */
+
+[dir="rtl"] .bg-position-right {
+  background-position: left center;
+}
+
+[dir="rtl"] .bg-position-left {
+  background-position: right center;
+}
+
+/* ============================================================
+ * Shadow Flip
+ * ============================================================ */
+
+[dir="rtl"] .shadow-left {
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+[dir="rtl"] .shadow-right {
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================================
+ * Scroll Direction
+ * ============================================================ */
+
+[dir="rtl"] .scroll-x {
+  direction: rtl;
+}
+
+/* ============================================================
+ * Input / Textarea RTL
+ * ============================================================ */
+
+[dir="rtl"] input,
+[dir="rtl"] textarea {
+  text-align: right;
+}
+
+[dir="rtl"] input::placeholder,
+[dir="rtl"] textarea::placeholder {
+  text-align: right;
+}
+
+/* ============================================================
+ * Badge / Notification Position
+ * ============================================================ */
+
+[dir="rtl"] .badge-right {
+  left: 0;
+  right: auto;
+}
+
+[dir="rtl"] .badge-left {
+  right: 0;
+  left: auto;
+}
+
+/* ============================================================
+ * RTL Mixin-like classes for common patterns
+ * ============================================================ */
+
+/* Full-width container with safe RTL margins */
+.rtl-container {
+  width: 100%;
+  direction: inherit;
+}
+
+/* Icon + Text horizontal layout */
+.rtl-icon-text {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10upx;
+}
+
+[dir="rtl"] .rtl-icon-text {
+  flex-direction: row-reverse;
+}
+
+/* Two-column layout */
+.rtl-two-col {
+  display: flex;
+  flex-direction: row;
+}
+
+[dir="rtl"] .rtl-two-col {
+  flex-direction: row-reverse;
+}
+
+/* ============================================================
+ * Utility: Force LTR inside RTL context
+ * ============================================================ */
+
+.force-ltr {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+.force-rtl {
+  direction: rtl;
+  unicode-bidi: embed;
+}
+
+/* ============================================================
+ * Safe Area for RTL (mobile)
+ * ============================================================ */
+
+.safe-area-start {
+  padding-inline-start: env(safe-area-inset-left);
+}
+
+.safe-area-end {
+  padding-inline-end: env(safe-area-inset-right);
+}
+
+[dir="rtl"] .safe-area-start {
+  padding-inline-start: env(safe-area-inset-right);
+}
+
+[dir="rtl"] .safe-area-end {
+  padding-inline-end: env(safe-area-inset-left);
+}

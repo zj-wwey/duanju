@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 允许所有明文 HTTP 请求 (开发环境) -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- 开发域名白名单 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">0.0.0.0</domain>
+        <domain includeSubdomains="true">192.168.0.108</domain>
+        <domain includeSubdomains="false">192.168.*.*</domain>
+        <domain includeSubdomains="false">172.*.*.*</domain>
+        <domain includeSubdomains="false">10.*.*.*</domain>
+    </domain-config>
+</network-security-config>

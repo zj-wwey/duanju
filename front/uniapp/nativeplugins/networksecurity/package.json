@@ -1,0 +1,18 @@
+{
+  "id": "networksecurity",
+  "name": "NetworkSecurityConfig",
+  "version": "1.0.0",
+  "description": "Allow cleartext HTTP for Android 9+ media components",
+  "_dp_type": "nativeplugin",
+  "_dp_nativeplugin": {
+    "android": {
+      "plugins": [
+        {
+          "type": "module",
+          "name": "NetworkSecurityConfig"
+        }
+      ],
+      "integrateType": "local"
+    }
+  }
+}

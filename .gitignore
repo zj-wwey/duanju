@@ -1,0 +1,88 @@
+# ============================================================
+# 短剧平台 .gitignore
+# ============================================================
+
+# ====== 敏感配置（绝对不能提交）======
+.env
+.env.*
+!.env.example
+!.env.production
+nginx/ssl/
+*.pem
+*.key
+*.p12
+*.jks
+
+# ====== Docker 部署产生的数据目录 ======
+mysql-data/
+redis-data/
+logs/
+uploads/
+admin-dist/
+h5-dist/
+backups/
+
+# ====== Java / Maven 后端 ======
+backed/server/target/
+backed/server/logs/
+backed/server/uploads/
+backed/uploads/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# ====== 前端构建产物 ======
+front/admin/dist/
+front/uniapp/dist/
+front/uniapp/unpackage/
+front/**/dist/
+node_modules/
+.npm/
+.pnpm-store/
+
+# ====== IDE 与编辑器 ======
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.factorypath
+.sts4-cache/
+
+# ====== 操作系统 ======
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# ====== 日志与临时文件 ======
+*.log
+*.pid
+*.seed
+*.pid.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ====== 测试与覆盖率 ======
+coverage/
+*.lcov
+.nyc_output/
+
+# ====== HBuilderX / uni-app ======
+front/uniapp/.hbuilderx/
+front/uniapp/manifest.local.json
+
+# ====== 其他 ======
+*.tmp
+*.temp
+.cache/
+*.local
