@@ -13,23 +13,21 @@
         <view class="status-label">{{ t('creditsAvailable', { count: points }) }}</view>
         <view class="status-title">{{ membershipTitle }}</view>
       </view>
-      <button class="status-btn" @click="activeTab = 'vip'">{{ t('vipMember') }}</button>
+      <view class="status-link" @click="go('/pages/mine/membership')">{{ t('membershipTitle') }} ›</view>
     </view>
 
-    <scroll-view scroll-x class="tabs">
-      <view class="tab" :class="{ active: activeTab === 'recharge' }" @click="activeTab = 'recharge'">{{ t('rechargeCredits') }}</view>
-      <view class="tab" :class="{ active: activeTab === 'vip' }" @click="activeTab = 'vip'">{{ t('vipMember') }}</view>
-      <view class="tab" :class="{ active: activeTab === 'shop' }" @click="activeTab = 'shop'">{{ t('shopTitle') }}</view>
-      <view class="tab" :class="{ active: activeTab === 'orders' }" @click="activeTab = 'orders'">{{ t('orders') }}</view>
-    </scroll-view>
+    <view class="tabs-row">
+      <scroll-view scroll-x class="tabs">
+        <view class="tab" :class="{ active: activeTab === 'recharge' }" @click="activeTab = 'recharge'">{{ t('rechargeCredits') }}</view>
+        <view class="tab" :class="{ active: activeTab === 'vip' }" @click="activeTab = 'vip'">{{ t('vipMember') }}</view>
+        <view class="tab" :class="{ active: activeTab === 'shop' }" @click="activeTab = 'shop'">{{ t('shopTitle') }}</view>
+      </scroll-view>
+      <view class="tabs-entry" @click="go('/pages/mine/exchange-records')">兑换记录 ›</view>
+    </view>
 
     <view v-if="loading" class="state">{{ t('loading') }}</view>
 
     <view v-else-if="activeTab === 'recharge'" class="panel">
-      <view class="pay-methods">
-        <view class="method" :class="{ active: payChannel === 'STRIPE' }" @click="payChannel = 'STRIPE'">Stripe</view>
-        <view class="method" :class="{ active: payChannel === 'PAYPAL' }" @click="payChannel = 'PAYPAL'">PayPal</view>
-      </view>
       <view v-if="!rechargeProducts.length" class="state small">{{ t('noPackages') }}</view>
       <view v-else class="product-grid">
         <view v-for="item in rechargeProducts" :key="item.id" class="product-card">
@@ -37,19 +35,12 @@
           <view class="product-points">{{ productPoints(item) }} {{ t('credits') }}</view>
           <view v-if="bonusPoints(item)" class="product-bonus">+{{ bonusPoints(item) }} {{ t('credits') }}</view>
           <view class="product-price">{{ formatMoney(item.localPriceCents || item.priceCents || item.price_cents, item) }}</view>
-          <button class="buy-btn" :disabled="paying" @click="buyProduct(item)">{{ t('confirmRecharge') }}</button>
+          <button class="buy-btn" :disabled="paying" @click="openPaySheet(item)">{{ t('confirmRecharge') }}</button>
         </view>
       </view>
     </view>
 
     <view v-else-if="activeTab === 'vip'" class="panel">
-      <view class="vip-card">
-        <view class="vip-badge">{{ levelShortName(membershipLevel) }}</view>
-        <view>
-          <view class="vip-title">{{ membershipTitle }}</view>
-          <view class="vip-desc">{{ vipInfo && (vipInfo.expireAt || vipInfo.expire_at) ? t('vipActive') : t('vipStatus') }}</view>
-        </view>
-      </view>
       <view v-if="!vipProducts.length" class="state small">{{ t('noPackages') }}</view>
       <view v-else class="product-list">
         <view v-for="item in vipProducts" :key="item.id" class="wide-card">
@@ -60,11 +51,10 @@
           </view>
           <view class="wide-side">
             <view class="product-price">{{ formatMoney(item.localPriceCents || item.priceCents || item.price_cents, item) }}</view>
-            <button class="buy-btn compact" :disabled="paying" @click="buyProduct(item)">{{ t('subscribe') }}</button>
+            <button class="buy-btn compact" :disabled="paying" @click="openPaySheet(item)">{{ t('subscribe') }}</button>
           </view>
         </view>
       </view>
-      <view class="link-row" @click="go('/pages/mine/membership')">{{ t('membershipTitle') }} ›</view>
     </view>
 
     <view v-else-if="activeTab === 'shop'" class="panel">
@@ -81,33 +71,59 @@
           </button>
         </view>
       </view>
-      <view class="section-title">{{ t('shopRecords') }}</view>
-      <view v-if="!shopRecords.length" class="state small">{{ t('shopNoRecords') }}</view>
-      <view v-else class="order-list">
-        <view v-for="record in shopRecords" :key="record.id" class="order-row">
-          <view>
-            <view class="order-title">{{ record.itemName || record.item_name || '-' }}</view>
-            <view class="order-no">{{ formatDate(record.createdAt || record.created_at) }}</view>
-          </view>
-          <view class="order-status">{{ record.deliveryStatus || record.delivery_status || '-' }}</view>
-        </view>
-      </view>
-    </view>
-
-    <view v-else class="panel">
-      <view v-if="!orders.length" class="state small">{{ t('noOrders') }}</view>
-      <view v-else class="order-list">
-        <view v-for="order in orders" :key="order.orderNo || order.order_no || order.id" class="order-row">
-          <view>
-            <view class="order-title">{{ order.productName || order.product_name || order.name || t('storeTab') }}</view>
-            <view class="order-no">{{ order.orderNo || order.order_no }}</view>
-          </view>
-          <view class="order-status" :class="{ paid: order.status === 'PAID' }">{{ order.status || '-' }}</view>
-        </view>
-      </view>
     </view>
 
     <app-tab-bar current="store" />
+
+    <!-- ========== 支付账单弹窗 (淘宝式) ========== -->
+    <view v-if="sheetVisible" class="sheet-mask" @click="closePaySheet">
+      <view class="sheet" @click.stop>
+        <!-- 账单明细 -->
+        <view class="sheet-header">
+          <view class="sheet-title">确认订单</view>
+          <view class="sheet-close" @click="closePaySheet">✕</view>
+        </view>
+        <view class="sheet-bill">
+          <view class="bill-item">
+            <view class="bill-label">商品</view>
+            <view class="bill-value">{{ (paySheetItem && paySheetItem.name) || '-' }}</view>
+          </view>
+          <view class="bill-item" v-if="paySheetItem">
+            <view class="bill-label">{{ productPoints(paySheetItem) }} {{ t('credits') }}</view>
+            <view class="bill-value">{{ formatMoney(paySheetItem.localPriceCents || paySheetItem.priceCents || paySheetItem.price_cents, paySheetItem) }}</view>
+          </view>
+          <view class="bill-divider"></view>
+          <view class="bill-total">
+            <view>合计</view>
+            <view class="bill-total-price">{{ paySheetItem ? formatMoney(paySheetItem.localPriceCents || paySheetItem.priceCents || paySheetItem.price_cents, paySheetItem) : '-' }}</view>
+          </view>
+        </view>
+
+        <!-- 支付方式列表 -->
+        <view class="sheet-section-title">选择支付方式</view>
+        <view class="pay-list">
+          <view v-for="m in paymentMethods" :key="m.key"
+                class="pay-row" :class="{ selected: payChannel === m.key, disabled: m.disabled }"
+                @click="m.disabled ? null : (payChannel = m.key)">
+            <view class="pay-row-icon">{{ m.icon }}</view>
+            <view class="pay-row-main">
+              <view class="pay-row-name">{{ m.name }}</view>
+              <view v-if="m.disabled" class="pay-row-sub">{{ m.disabledTip }}</view>
+            </view>
+            <view class="pay-row-check">{{ payChannel === m.key ? '✓' : '' }}</view>
+          </view>
+        </view>
+
+        <!-- 底部确认 -->
+        <view class="sheet-footer">
+          <view class="footer-total">
+            <text>合计</text>
+            <text class="footer-price">{{ paySheetItem ? formatMoney(paySheetItem.localPriceCents || paySheetItem.priceCents || paySheetItem.price_cents, paySheetItem) : '-' }}</text>
+          </view>
+          <button class="footer-btn" :disabled="paying" @click="confirmPay">{{ paying ? '支付中...' : '确认支付' }}</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -116,6 +132,7 @@ import api from '../../utils/api.js'
 import { getLocale, t as translate } from '../../utils/i18n.js'
 import { formatPrice, getCurrencyByLocale } from '../../utils/currencyConfig.js'
 import { notifyDataChanged, APP_DATA_EVENTS, requireLogin } from '../../utils/app-state.js'
+import { nativePayAndVerify } from '../../utils/payment-bridge.js'
 import { productPoints, formatNumber, formatDate as formatDateUtil, LEVEL_MAP } from '../../../shared/utils/format.js'
 
 export default {
@@ -123,11 +140,12 @@ export default {
     return {
       activeTab: 'recharge',
       payChannel: 'STRIPE',
+      sheetVisible: false,
+      paySheetItem: null,
       points: 0,
       products: [],
       orders: [],
       shopItems: [],
-      shopRecords: [],
       vipInfo: null,
       membershipInfo: null,
       loading: true,
@@ -139,6 +157,29 @@ export default {
     }
   },
   computed: {
+    paymentMethods() {
+      // 根据平台动态生成支付方式列表, APP 原生插件未就绪时自动标 disabled
+      const isApp = typeof plus !== 'undefined'
+      const hasPlugin = isApp && typeof uni.requireNativePlugin('PaymentBridge') === 'object'
+      const isIOS = isApp && typeof plus !== 'undefined' && plus.os && plus.os.name === 'iOS'
+      const isAndroid = isApp && typeof plus !== 'undefined' && plus.os && plus.os.name === 'Android'
+
+      const list = [
+        { key: 'STRIPE',  name: 'Stripe',       icon: '💳', disabled: false },
+        { key: 'PAYPAL',  name: 'PayPal',       icon: '🅿️', disabled: false },
+        // Apple Pay / IAP — 仅 iOS
+        { key: 'APPLE_PAY',  name: 'Apple Pay',     icon: '🍎',
+          disabled: !isIOS, disabledTip: !isIOS ? '仅 iOS 设备可用' : (hasPlugin ? '' : '原生插件未就绪') },
+        { key: 'APPLE_IAP',  name: 'Apple 内购',    icon: '🛒',
+          disabled: !isIOS, disabledTip: !isIOS ? '仅 iOS 设备可用' : (hasPlugin ? '' : '原生插件未就绪') },
+        // Google Pay / Play — 仅 Android
+        { key: 'GOOGLE_PAY', name: 'Google Pay',    icon: 'G',
+          disabled: !isAndroid, disabledTip: !isAndroid ? '仅 Android 设备可用' : (hasPlugin ? '' : '原生插件未就绪') },
+        { key: 'GOOGLE_PLAY',name: 'Google Play',   icon: '▶',
+          disabled: !isAndroid, disabledTip: !isAndroid ? '仅 Android 设备可用' : (hasPlugin ? '' : '原生插件未就绪') }
+      ]
+      return list
+    },
     rechargeProducts() {
       return this.products.filter(item => {
         const category = item.productCategory || item.product_category
@@ -175,12 +216,11 @@ export default {
       this.loading = true
       const loggedIn = !!uni.getStorageSync('token')
       try {
-        const [pointsData, products, orders, shopItems, shopRecords, vipInfo, membershipInfo] = await Promise.all([
+        const [pointsData, products, orders, shopItems, vipInfo, membershipInfo] = await Promise.all([
           loggedIn ? api.points().catch(() => null) : Promise.resolve(null),
           api.productsByLocale().catch(() => api.pointProducts()).catch(() => []),
           loggedIn ? api.orders().catch(() => []) : Promise.resolve([]),
           loggedIn ? api.shopItems().catch(() => []) : Promise.resolve([]),
-          loggedIn ? api.shopRecords().catch(() => []) : Promise.resolve([]),
           loggedIn ? api.vipStatus().catch(() => null) : Promise.resolve(null),
           loggedIn ? api.membershipStatus().catch(() => null) : Promise.resolve(null)
         ])
@@ -188,7 +228,6 @@ export default {
         this.products = Array.isArray(products) ? products : []
         this.orders = Array.isArray(orders) ? orders.slice(0, 30) : []
         this.shopItems = Array.isArray(shopItems) ? shopItems : (shopItems?.records || shopItems?.list || [])
-        this.shopRecords = Array.isArray(shopRecords) ? shopRecords : (shopRecords?.records || shopRecords?.list || [])
         this.vipInfo = vipInfo
         this.membershipInfo = membershipInfo
       } catch (err) {
@@ -204,6 +243,34 @@ export default {
         const order = await api.createOrder({ productId: item.id, payChannel: this.payChannel })
         const orderNo = order.orderNo || order.order_no
         if (!orderNo) throw new Error(this.t('orderCreateFailed'))
+
+        // --- 原生支付通道 (APPLE_IAP / GOOGLE_PLAY / APPLE_PAY / GOOGLE_PAY) ---
+        if (this.isNativePayChannel(this.payChannel)) {
+          const nativeResult = await nativePayAndVerify({
+            payChannel: this.payChannel,
+            // sku 映射: 后端 point_product.storeProductId / store_product_id 字段
+            productSku: item.storeProductId || item.store_product_id || item.sku || item.name,
+            amountCents: item.priceCents || item.price_cents || item.localPriceCents || 0,
+            currency: item.currency || getCurrencyByLocale(this.locale).code,
+            countryCode: this.getCountryCode(),
+            orderNo
+          })
+          // Wallet 支付后端未就绪 → fallback 到 Stripe Checkout
+          if (nativeResult && nativeResult.walletFallback) {
+            console.warn('[store.vue] Wallet fallback → Stripe Checkout')
+            const checkout = await api.stripeCheckout(orderNo)
+            this.openPayment(checkout.sessionUrl || checkout.session_url)
+            return
+          }
+          notifyDataChanged(APP_DATA_EVENTS.order, { orderNo, status: 'PAID' })
+          notifyDataChanged(APP_DATA_EVENTS.points)
+          notifyDataChanged(APP_DATA_EVENTS.membership)
+          uni.showToast({ title: this.t('rechargeSuccess'), icon: 'success' })
+          await this.load()
+          return
+        }
+
+        // --- Web 支付通道 (STRIPE / PAYPAL) ---
         const checkout = this.payChannel === 'PAYPAL'
           ? await api.paypalCheckout(orderNo)
           : await api.stripeCheckout(orderNo)
@@ -217,6 +284,39 @@ export default {
       } finally {
         this.paying = false
       }
+    },
+
+    // ========= 底部支付弹窗 =========
+    openPaySheet(item) {
+      if (!this.ensureLogin()) return
+      this.paySheetItem = item
+      // 默认选第一个可用的支付方式
+      const first = this.paymentMethods.find(m => !m.disabled)
+      if (first) this.payChannel = first.key
+      this.sheetVisible = true
+    },
+    closePaySheet() {
+      this.sheetVisible = false
+      this.paySheetItem = null
+    },
+    async confirmPay() {
+      // 检查当前 payChannel 是否 disabled
+      const cur = this.paymentMethods.find(m => m.key === this.payChannel)
+      if (!cur || cur.disabled) {
+        uni.showToast({ title: cur?.disabledTip || '请选择支付方式', icon: 'none' })
+        return
+      }
+      const item = this.paySheetItem
+      this.closePaySheet()
+      await this.buyProduct(item)
+    },
+    isNativePayChannel(channel) {
+      return ['APPLE_IAP', 'GOOGLE_PLAY', 'APPLE_PAY', 'GOOGLE_PAY'].includes(channel)
+    },
+    getCountryCode() {
+      const locale = this.locale || 'en-US'
+      const map = { 'zh-Hans': 'CN', 'zh-Hant': 'TW', 'en-US': 'US', 'en-GB': 'GB', 'ja-JP': 'JP', 'ko-KR': 'KR' }
+      return map[locale] || 'US'
     },
     async exchangeItem(item) {
       if (!this.ensureLogin() || this.exchangingId || this.isOutOfStock(item)) return
@@ -382,8 +482,7 @@ page,
   color: transparent;
 }
 
-.balance-pill,
-.status-btn {
+.balance-pill {
   padding: 16rpx 26rpx;
   border-radius: 999rpx;
   color: #11100d;
@@ -397,9 +496,14 @@ page,
   transition: transform 0.18s ease;
 }
 
-.balance-pill:active,
-.status-btn:active {
+.balance-pill:active {
   transform: scale(0.95);
+}
+
+.status-link {
+  font-size: 24rpx;
+  color: #f7c66a;
+  font-weight: 600;
 }
 
 .status-card {
@@ -444,15 +548,25 @@ page,
   letter-spacing: -0.5rpx;
 }
 
-.status-btn {
-  height: 72rpx;
-  line-height: 72rpx;
-  padding: 0 28rpx;
+.tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 26rpx;
 }
 
 .tabs {
+  flex: 1;
   white-space: nowrap;
-  margin-bottom: 26rpx;
+  margin-bottom: 0;
+}
+
+.tabs-entry {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #f7c66a;
+  font-weight: 600;
+  padding: 0 8rpx;
 }
 
 .tab {
@@ -489,29 +603,129 @@ page,
   min-height: 300rpx;
 }
 
-.pay-methods {
+/* ========= 支付弹窗 ========= */
+.sheet-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 999;
   display: flex;
-  gap: 16rpx;
-  margin-bottom: 24rpx;
+  align-items: flex-end;
+}
+.sheet {
+  width: 100%;
+  background: #141623;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 24rpx 32rpx 40rpx;
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid rgba(255,255,255,0.08);
+}
+.sheet-title { font-size: 32rpx; font-weight: 700; color: #fff; }
+.sheet-close { color: rgba(255,255,255,0.5); font-size: 28rpx; padding: 8rpx; }
+
+.sheet-bill { padding: 20rpx 0; }
+.bill-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 26rpx;
+  color: rgba(255,255,255,0.7);
+  padding: 8rpx 0;
+}
+.bill-divider { height: 1rpx; background: rgba(255,255,255,0.08); margin: 16rpx 0; }
+.bill-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
+.bill-total-price { color: #f7c66a; font-size: 32rpx; }
+
+.sheet-section-title {
+  font-size: 26rpx;
+  color: rgba(255,255,255,0.55);
+  margin-top: 12rpx;
+  margin-bottom: 16rpx;
 }
 
-.method {
+.pay-list { display: flex; flex-direction: column; gap: 8rpx; }
+.pay-row {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 20rpx;
+  background: rgba(255,255,255,0.04);
+  border: 1rpx solid rgba(255,255,255,0.08);
+  border-radius: 14rpx;
+  gap: 20rpx;
+}
+.pay-row.selected {
+  background: rgba(247,198,106,0.1);
+  border-color: rgba(247,198,106,0.6);
+}
+.pay-row.disabled { opacity: 0.4; }
+.pay-row-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
+  background: rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  flex-shrink: 0;
+}
+.pay-row-main { flex: 1; min-width: 0; }
+.pay-row-name { font-size: 28rpx; color: #fff; font-weight: 500; }
+.pay-row-sub { font-size: 22rpx; color: rgba(255,255,255,0.4); margin-top: 4rpx; }
+.pay-row-check {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(255,255,255,0.3);
+  color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  flex-shrink: 0;
+}
+.pay-row.selected .pay-row-check {
+  background: #f7c66a;
+  border-color: #f7c66a;
+  color: #141623;
+}
+
+.sheet-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 28rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(255,255,255,0.08);
+  gap: 20rpx;
+}
+.footer-total { display: flex; flex-direction: column; gap: 4rpx; font-size: 22rpx; color: rgba(255,255,255,0.6); }
+.footer-price { color: #f7c66a; font-size: 40rpx; font-weight: 700; }
+.footer-btn {
   flex: 1;
-  height: 80rpx;
-  line-height: 80rpx;
-  text-align: center;
-  border-radius: 999rpx;
-  color: rgba(255,255,255,0.74);
-  background: rgba(255,255,255,0.1);
-  border: 1rpx solid rgba(255, 255, 255, 0.14);
-  font-weight: 900;
-  letter-spacing: 0.5rpx;
-  transition: all 0.2s ease;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: linear-gradient(135deg, #f7c66a, #e5a84b);
+  color: #141623;
+  border: none;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 700;
 }
-
-.method:active {
-  transform: scale(0.97);
-}
+.footer-btn:disabled { opacity: 0.5; }
 
 .product-grid {
   display: grid;

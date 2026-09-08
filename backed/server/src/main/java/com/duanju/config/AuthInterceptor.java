@@ -60,6 +60,8 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         // 白名单:直接放行,由下游控制器自行处理安全校验(如 webhook 签名)
         if (isWhiteListed(path)) {
+            // 公开接口仍尝试解析登录态,便于返回个性化字段(解锁状态/点赞/收藏)
+            PrincipalHolder.set(tokenService.parse(request.getHeader("Authorization")));
             return true;
         }
 

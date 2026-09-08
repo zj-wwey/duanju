@@ -18,7 +18,7 @@ public interface DramaEpisodeMapper extends BaseMapper<DramaEpisode> {
     @Select("""
             select e.id, e.drama_id, e.episode_no, e.title, e.description, e.cover_url, e.video_url,
                    e.price_points, e.duration_seconds, e.video_duration, e.is_free, e.access_type,
-                   e.cloudflare_uid, e.hls_url, e.status, e.storage_provider
+                   e.cloudflare_uid, e.hls_url, e.transcode_status, e.status, e.storage_provider
             from drama_episode e join drama d on d.id = e.drama_id
             where e.id = #{episodeId} and e.status = 1 and d.status = 1
             """)
@@ -27,7 +27,7 @@ public interface DramaEpisodeMapper extends BaseMapper<DramaEpisode> {
     @Select("""
             select id, drama_id, episode_no, title, description, cover_url, video_url, price_points,
                    duration_seconds, video_duration, is_free, access_type, sort_order, storage_provider,
-                   cloudflare_uid, hls_url, status, created_at
+                   cloudflare_uid, hls_url, transcode_status, status, created_at
             from drama_episode
             where drama_id = #{dramaId} and status = 1
             order by sort_order asc, episode_no asc
@@ -37,6 +37,7 @@ public interface DramaEpisodeMapper extends BaseMapper<DramaEpisode> {
     @Select("""
             select id, drama_id, episode_no, title, description, cover_url, video_url, price_points,
                    duration_seconds, is_free, access_type, sort_order, storage_provider, status, created_at,
+                   transcode_status, hls_url,
                    (select count(*) from episode_play_event pe where pe.episode_id = drama_episode.id) play_count,
                    (select count(distinct pe.user_id) from episode_play_event pe where pe.episode_id = drama_episode.id) play_users,
                    (select ifnull(round(avg(pe.progress_seconds), 0), 0) from episode_play_event pe where pe.episode_id = drama_episode.id) avg_watch_seconds,
@@ -66,19 +67,20 @@ public interface DramaEpisodeMapper extends BaseMapper<DramaEpisode> {
                                             @Param("status") Integer status);
 
     @Insert("""
-            insert into drama_episode(drama_id, episode_no, title, description, cover_url, video_url, price_points,
-              duration_seconds, video_duration, is_free, access_type, sort_order, storage_provider, status)
-            values(#{dramaId}, #{episodeNo}, #{title}, #{description}, #{coverUrl}, #{videoUrl}, #{pricePoints},
-              #{durationSeconds}, #{videoDurationSeconds}, #{isFree}, #{accessType}, #{sortOrder}, #{storageProvider}, #{status})
+            insert into drama_episode(drama_id, episode_no, title, description, cover_url, video_url, cloudflare_uid, price_points,
+              duration_seconds, video_duration, is_free, access_type, sort_order, storage_provider, status, cover_object_key)
+            values(#{dramaId}, #{episodeNo}, #{title}, #{description}, #{coverUrl}, #{videoUrl}, #{cloudflareUid}, #{pricePoints},
+              #{durationSeconds}, #{videoDurationSeconds}, #{isFree}, #{accessType}, #{sortOrder}, #{storageProvider}, #{status}, #{coverObjectKey})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insertEpisode(Map<String, Object> episode);
 
     @Update("""
             update drama_episode set drama_id=#{dramaId}, episode_no=#{episodeNo}, title=#{title}, description=#{description},
-              cover_url=#{coverUrl}, video_url=#{videoUrl}, price_points=#{pricePoints}, duration_seconds=#{durationSeconds},
-              video_duration=#{videoDurationSeconds},
-              is_free=#{isFree}, access_type=#{accessType}, sort_order=#{sortOrder}, storage_provider=#{storageProvider}, status=#{status}
+              cover_url=#{coverUrl}, video_url=#{videoUrl}, cloudflare_uid=#{cloudflareUid}, price_points=#{pricePoints},
+              duration_seconds=#{durationSeconds}, video_duration=#{videoDurationSeconds},
+              is_free=#{isFree}, access_type=#{accessType}, sort_order=#{sortOrder}, storage_provider=#{storageProvider}, status=#{status},
+              cover_object_key=#{coverObjectKey}
             where id=#{id}
             """)
     int updateEpisode(Map<String, Object> episode);

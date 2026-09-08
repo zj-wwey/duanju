@@ -34,6 +34,8 @@ function normalizeEpisode(row = {}) {
     episodeNo: row.episodeNo ?? row.episode_no,
     coverUrl: row.coverUrl ?? row.cover_url,
     videoUrl: row.videoUrl ?? row.video_url,
+    hlsUrl: row.hlsUrl ?? row.hls_url,
+    signedUrl: row.signedUrl ?? row.signed_url,
     pricePoints: row.pricePoints ?? row.price_points ?? 5,
     durationSeconds: row.durationSeconds ?? row.duration_seconds,
     durationText: row.durationText ?? row.duration_text

@@ -28,6 +28,9 @@ public class DramaEpisode {
     @TableField("cover_url")
     private String coverUrl;
 
+    @TableField("cover_object_key")
+    private String coverObjectKey;
+
     @TableField("video_url")
     private String videoUrl;
 
@@ -54,6 +57,9 @@ public class DramaEpisode {
 
     @TableField("hls_url")
     private String hlsUrl;
+
+    @TableField("transcode_status")
+    private Integer transcodeStatus;
 
     @TableField("video_duration")
     private Integer videoDurationSeconds;

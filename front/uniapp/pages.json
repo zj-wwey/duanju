@@ -13,7 +13,7 @@
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "Short Drama",
-        "enablePullDownRefresh": true,
+        "enablePullDownRefresh": false,
         "navigationStyle": "custom",
         "navigationBarBackgroundColor": "#000000",
         "subNVues": [
@@ -53,6 +53,22 @@
       "path": "pages/mine/mine",
       "style": {
         "navigationBarTitleText": "Profile"
+      }
+    },
+    {
+      "path": "pages/mine/points",
+      "style": {
+        "navigationBarTitleText": "积分明细",
+        "navigationBarBackgroundColor": "#080A10",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/mine/exchange-records",
+      "style": {
+        "navigationBarTitleText": "兑换记录",
+        "navigationBarBackgroundColor": "#080A10",
+        "navigationBarTextStyle": "white"
       }
     },
     {
@@ -159,9 +175,9 @@
       }
     },
     {
-      "path": "pages/mine/feedback",
+      "path": "pages/mine/contact",
       "style": {
-        "navigationBarTitleText": "Feedback"
+        "navigationBarTitleText": "Contact Us"
       }
     }
   ],

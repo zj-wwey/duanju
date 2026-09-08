@@ -16,11 +16,11 @@ import java.util.Map;
 public interface DramaMapper extends BaseMapper<Drama> {
 
     @Select("""
-            select d.id, d.title, d.description, d.cover_url,
+            select d.id, d.title, d.description, d.author_name, d.cover_url,
                    d.horizontal_cover_url, d.vertical_cover_url, d.tags,
                    d.free_episode_count, d.total_episodes, d.episode_price_points, d.whole_price_points,
                    d.content_type, d.background, d.theme, d.setting_key,
-                   d.audience, d.publish_date, d.online_time, d.hot_score, d.recommended, d.status, d.sort_order, d.created_at
+                   d.audience, d.publish_date, d.online_time, d.hot_score, d.like_count, d.recommended, d.status, d.sort_order, d.created_at
             from drama d
             where d.status = 1
               and (#{contentType} is null or d.content_type = #{contentType})
@@ -82,11 +82,11 @@ public interface DramaMapper extends BaseMapper<Drama> {
                                           @Param("keyword") String keyword);
 
     @Select("""
-            select d.id, d.title, d.description, d.cover_url,
+            select d.id, d.title, d.description, d.author_name, d.cover_url,
                    d.horizontal_cover_url, d.vertical_cover_url, d.tags,
                    d.free_episode_count, d.total_episodes, d.episode_price_points, d.whole_price_points,
                    d.content_type, d.background, d.theme, d.setting_key,
-                   d.audience, d.publish_date, d.online_time, d.hot_score, d.recommended, d.status, d.sort_order, d.created_at
+                   d.audience, d.publish_date, d.online_time, d.hot_score, d.like_count, d.recommended, d.status, d.sort_order, d.created_at
             from drama d
             where d.id = #{id} and d.status = 1
             """)
@@ -95,10 +95,12 @@ public interface DramaMapper extends BaseMapper<Drama> {
     @Insert("""
             insert into drama(title, description, cover_url, free_episode_count, total_episodes,
               horizontal_cover_url, vertical_cover_url, tags, episode_price_points, whole_price_points,
-              content_type, background, theme, setting_key, audience, publish_date, online_time, hot_score, recommended, status, sort_order)
+              content_type, background, theme, setting_key, audience, publish_date, online_time, hot_score, recommended, status, sort_order,
+              cover_object_key, horizontal_cover_object_key, vertical_cover_object_key)
             values(#{title}, #{description}, #{coverUrl}, #{freeEpisodeCount}, #{totalEpisodes},
               #{horizontalCoverUrl}, #{verticalCoverUrl}, #{tags}, #{episodePricePoints}, #{wholePricePoints},
-              #{contentType}, #{background}, #{theme}, #{setting}, #{audience}, #{publishDate}, #{onlineTime}, #{hotScore}, #{recommended}, #{status}, #{sortOrder})
+              #{contentType}, #{background}, #{theme}, #{setting}, #{audience}, #{publishDate}, #{onlineTime}, #{hotScore}, #{recommended}, #{status}, #{sortOrder},
+              #{coverObjectKey}, #{horizontalCoverObjectKey}, #{verticalCoverObjectKey})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insertDrama(Map<String, Object> drama);
@@ -110,7 +112,8 @@ public interface DramaMapper extends BaseMapper<Drama> {
               episode_price_points=#{episodePricePoints}, whole_price_points=#{wholePricePoints}, content_type=#{contentType},
               background=#{background}, theme=#{theme}, setting_key=#{setting}, audience=#{audience},
               publish_date=#{publishDate}, online_time=#{onlineTime}, hot_score=#{hotScore}, recommended=#{recommended},
-              status=#{status}, sort_order=#{sortOrder}
+              status=#{status}, sort_order=#{sortOrder},
+              cover_object_key=#{coverObjectKey}, horizontal_cover_object_key=#{horizontalCoverObjectKey}, vertical_cover_object_key=#{verticalCoverObjectKey}
             where id=#{id}
             """)
     int updateDrama(Map<String, Object> drama);
@@ -124,4 +127,49 @@ public interface DramaMapper extends BaseMapper<Drama> {
             where id = #{dramaId}
             """)
     int syncDramaEpisodeTotal(@Param("dramaId") Long dramaId);
+
+    /** Feed 流：每剧取一条，附带随机免费集/第一集的播放信息 */
+    @Select("""
+            select d.id as drama_id, d.title, d.description, d.author_name, d.cover_url,
+                   d.horizontal_cover_url, d.vertical_cover_url, d.tags,
+                   d.free_episode_count, d.total_episodes, d.episode_price_points, d.whole_price_points,
+                   d.content_type, d.background, d.theme, d.setting_key,
+                   d.audience, d.publish_date, d.online_time, d.hot_score, d.like_count, d.recommended,
+                   -- 每剧选一集：优先免费集(is_free=1)里 sort_order 最小的，否则 sort_order 最小的
+                   e.id as episode_id, e.episode_no, e.title as episode_title,
+                   e.description as episode_desc, e.cover_url as episode_cover,
+                   e.video_url, e.cloudflare_uid, e.hls_url,
+                   e.is_free, e.access_type, e.price_points, e.duration_seconds, e.video_duration,
+                   e.transcode_status
+            from drama d
+            join drama_episode e on e.id = (
+                select e2.id from drama_episode e2
+                where e2.drama_id = d.id and e2.status = 1
+                order by
+                  case when e2.is_free = 1 then 0 else 1 end asc,
+                  e2.sort_order asc,
+                  e2.episode_no asc
+                limit 1
+            )
+            where d.status = 1
+              and (#{contentType} is null or d.content_type = #{contentType})
+              and (#{recommended} is null or d.recommended = #{recommended})
+            order by
+              d.recommended desc, d.hot_score desc, d.sort_order asc, d.id desc
+            limit #{offset}, #{size}
+            """)
+    List<Map<String, Object>> feedDramas(@Param("contentType") String contentType,
+                                         @Param("recommended") Boolean recommended,
+                                         @Param("offset") int offset,
+                                         @Param("size") int size);
+
+    /** 统计符合 feed 条件的剧总数，用于 hasMore 判断 */
+    @Select("""
+            select count(*) from drama d
+            where d.status = 1
+              and (#{contentType} is null or d.content_type = #{contentType})
+              and (#{recommended} is null or d.recommended = #{recommended})
+            """)
+    int countFeedDramas(@Param("contentType") String contentType,
+                        @Param("recommended") Boolean recommended);
 }

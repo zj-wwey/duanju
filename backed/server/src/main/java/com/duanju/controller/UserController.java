@@ -1,6 +1,8 @@
 package com.duanju.controller;
 
 import com.duanju.common.R;
+import com.duanju.dto.user.CommentCreateRequest;
+import com.duanju.dto.user.CommentReplyRequest;
 import com.duanju.dto.user.HistoryRequest;
 import com.duanju.dto.user.PasswordChangeRequest;
 import com.duanju.dto.user.ProfileUpdateRequest;
@@ -14,6 +16,7 @@ import com.duanju.service.AutoRenewalService;
 import com.duanju.service.DramaService;
 import com.duanju.service.InviteService;
 import com.duanju.service.MembershipService;
+import com.duanju.service.NotificationService;
 import com.duanju.service.PointService;
 import com.duanju.service.UnlockService;
 import com.duanju.service.UserActionService;
@@ -22,6 +25,7 @@ import com.duanju.service.VipService;
 import com.duanju.service.entity.AppUserService;
 import com.duanju.service.entity.UserInviteService;
 import com.duanju.util.MapUtil;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,6 +58,7 @@ public class UserController {
     private final DramaService dramaService;
     private final AppUserService appUserService;
     private final InviteService inviteService;
+    private final NotificationService notificationService;
 
     public UserController(UserService userService, UserActionService userActionService,
                           UnlockService unlockService, PointService pointService,
@@ -61,7 +67,8 @@ public class UserController {
                           UserInviteService userInviteService,
                           DramaService dramaService,
                           AppUserService appUserService,
-                          InviteService inviteService) {
+                          InviteService inviteService,
+                          NotificationService notificationService) {
         this.userService = userService;
         this.userActionService = userActionService;
         this.unlockService = unlockService;
@@ -73,6 +80,7 @@ public class UserController {
         this.dramaService = dramaService;
         this.appUserService = appUserService;
         this.inviteService = inviteService;
+        this.notificationService = notificationService;
     }
 
     @GetMapping("/me")
@@ -95,6 +103,13 @@ public class UserController {
     @PutMapping("/profile")
     public R<Map<String, Object>> updateProfile(@Validated @RequestBody ProfileUpdateRequest request) {
         return R.ok(userService.updateProfile(PrincipalHolder.userId(), request.nickname(), request.avatarUrl()));
+    }
+
+    /** 上传用户头像 (multipart),返回 {url, objectKey} */
+    @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public R<Map<String, String>> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        Long userId = PrincipalHolder.userId();
+        return R.ok(userService.uploadAvatar(userId, file));
     }
 
     @PutMapping("/password")
@@ -121,6 +136,60 @@ public class UserController {
     @GetMapping("/favorites")
     public R<List<Map<String, Object>>> favorites() {
         return R.ok(userActionService.getFavorites(PrincipalHolder.userId()));
+    }
+
+    /** 点赞/取消点赞，返回 {liked, likeCount} */
+    @PostMapping("/likes/{dramaId}/toggle")
+    public R<Map<String, Object>> toggleLike(@PathVariable Long dramaId) {
+        return R.ok(userActionService.toggleLike(PrincipalHolder.userId(), dramaId));
+    }
+
+    /** 发表评论（路径避开 /api/dramas 白名单前缀，确保登录鉴权生效） */
+    @PostMapping("/comments")
+    public R<Map<String, Object>> addComment(@Validated @RequestBody CommentCreateRequest request) {
+        return R.ok(userActionService.addComment(PrincipalHolder.userId(), request.dramaId(),
+                request.episodeId(), request.content()));
+    }
+
+    /** 回复评论 */
+    @PostMapping("/comments/reply")
+    public R<Map<String, Object>> reply(@Validated @RequestBody CommentReplyRequest request) {
+        return R.ok(userActionService.replyComment(PrincipalHolder.userId(), request.dramaId(),
+                request.episodeId(), request.parentId(), request.replyToUserId(), request.content()));
+    }
+
+    /** 删除自己的评论 */
+    @DeleteMapping("/comments/{commentId}")
+    public R<Void> deleteComment(@PathVariable Long commentId) {
+        userActionService.deleteComment(PrincipalHolder.userId(), commentId);
+        return R.ok();
+    }
+
+    /** 当前用户通知列表 */
+    @GetMapping("/notifications")
+    public R<Map<String, Object>> notifications(@RequestParam(defaultValue = "1") int page,
+                                                 @RequestParam(defaultValue = "20") int pageSize) {
+        return R.ok(notificationService.listForUser(PrincipalHolder.userId(), page, pageSize));
+    }
+
+    /** 未读数量 */
+    @GetMapping("/notifications/unread-count")
+    public R<Map<String, Object>> unreadCount() {
+        return R.ok(Map.of("unread", notificationService.countUnread(PrincipalHolder.userId())));
+    }
+
+    /** 全部标记已读 */
+    @PostMapping("/notifications/read-all")
+    public R<Void> markAllRead() {
+        notificationService.markAllRead(PrincipalHolder.userId());
+        return R.ok();
+    }
+
+    /** 单条标记已读 */
+    @PostMapping("/notifications/{id}/read")
+    public R<Void> markRead(@PathVariable Long id) {
+        notificationService.markRead(PrincipalHolder.userId(), id);
+        return R.ok();
     }
 
     @PostMapping("/history")

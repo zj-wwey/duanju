@@ -29,6 +29,12 @@
         <view class="item-label">{{ t('dailyReward') }}</view>
         <view class="item-arrow">›</view>
       </view>
+
+      <view class="item" @click="goTab('/pages/store/store?tab=orders')">
+        <view class="item-icon">📦</view>
+        <view class="item-label">{{ t('orders') }}</view>
+        <view class="item-arrow">›</view>
+      </view>
       <view class="item" @click="go('/pages/mine/favorites')">
         <view class="item-icon">⭐</view>
         <view class="item-label">{{ t('myList') }}</view>
@@ -39,34 +45,9 @@
         <view class="item-label">{{ t('watchHistory') }}</view>
         <view class="item-arrow">›</view>
       </view>
-      <view class="item" @click="goTab('/pages/theater/theater')">
-        <view class="item-icon">🔎</view>
-        <view class="item-label">{{ t('browse') }}</view>
-        <view class="item-arrow">›</view>
-      </view>
-      <view class="item" @click="goTab('/pages/store/store?tab=recharge')">
-        <view class="item-icon">💳</view>
-        <view class="item-label">{{ t('rechargeCredits') }}</view>
-        <view class="item-arrow">›</view>
-      </view>
-      <view class="item" @click="goTab('/pages/store/store?tab=orders')">
-        <view class="item-icon">📦</view>
-        <view class="item-label">{{ t('orders') }}</view>
-        <view class="item-arrow">›</view>
-      </view>
-      <view class="item" @click="goTab('/pages/store/store?tab=vip')">
-        <view class="item-icon">👑</view>
-        <view class="item-label">{{ t('vipMember') }}</view>
-        <view class="item-arrow">›</view>
-      </view>
       <view class="item" @click="go('/pages/mine/membership')">
         <view class="item-icon">💎</view>
         <view class="item-label">{{ t('membershipTitle') }}</view>
-        <view class="item-arrow">›</view>
-      </view>
-      <view class="item" @click="goTab('/pages/store/store?tab=shop')">
-        <view class="item-icon">🛒</view>
-        <view class="item-label">{{ t('shopTitle') }}</view>
         <view class="item-arrow">›</view>
       </view>
       <view class="item" @click="go('/pages/mine/announcements')">
@@ -84,22 +65,17 @@
         <view class="item-label">{{ t('settings') }}</view>
         <view class="item-arrow">›</view>
       </view>
-      <view v-if="user" class="item" @click="go('/pages/mine/profile-edit')">
-        <view class="item-icon">✏️</view>
-        <view class="item-label">{{ t('editProfile') }}</view>
+      <view class="item" @click="go('/pages/mine/points')">
+        <view class="item-icon">📋</view>
+        <view class="item-label">{{ t('creditActivity') }}</view>
         <view class="item-arrow">›</view>
       </view>
-    </view>
 
-    <view class="records" v-if="user">
-      <view class="section-title">{{ t('creditActivity') }}</view>
-      <view v-if="records.length" class="record-list">
-        <view v-for="item in records" :key="item.id" class="record">
-          <text class="record-remark">{{ item.remark || item.biz_type }}</text>
-          <text :class="{ plus: item.delta > 0 }">{{ item.delta > 0 ? '+' : '' }}{{ item.delta }}</text>
-        </view>
+      <view class="item" @click="go('/pages/mine/contact')">
+        <view class="item-icon">📞</view>
+        <view class="item-label">{{ t('contactUs') }}</view>
+        <view class="item-arrow">›</view>
       </view>
-      <view v-else class="empty-tip">--</view>
     </view>
 
     <view class="ad-reward" v-if="user">
@@ -119,7 +95,6 @@ export default {
   data() {
     return {
       user: null,
-      records: [],
       locale: getLocale(),
       localeOptions,
       membershipLevel: 'NONE'
@@ -147,14 +122,12 @@ export default {
     async load() {
       if (!uni.getStorageSync('token')) {
         this.user = null
-        this.records = []
         this.membershipLevel = 'NONE'
         return
       }
       try {
         const data = await api.points()
         this.user = data.user
-        this.records = data.records || []
       } catch (err) {
         uni.showToast({ title: err.message, icon: 'none' })
       }
@@ -198,7 +171,13 @@ export default {
         this.goLogin()
         return
       }
-      uni.navigateTo({ url })
+      uni.navigateTo({
+        url,
+        fail(err) {
+          console.error('[navigateTo fail]', url, err)
+          uni.showToast({ title: '无法跳转: ' + (err.errMsg || err.message || '未知错误'), icon: 'none', duration: 2500 })
+        }
+      })
     },
     goTab(url) {
       uni.redirectTo({ url })
@@ -211,7 +190,6 @@ export default {
       uni.removeStorageSync('refreshToken')
       uni.removeStorageSync('user')
       this.user = null
-      this.records = []
       uni.redirectTo({ url: '/pages/login/login' })
     },
     refreshLocale() {
@@ -288,7 +266,7 @@ page,
   height: 48rpx;
   line-height: 48rpx;
   text-align: center;
-  color: #11100d;
+  color: #ede6d8;
   background: linear-gradient(135deg, #ffe0a1, #f3b84d);
   border-radius: 999rpx;
   font-size: 20rpx;
@@ -361,7 +339,7 @@ page,
   text-align: center;
   border-radius: 50%;
   background: linear-gradient(135deg, #ffe0a1, #f3b84d);
-  color: #11100d;
+  color: #ede6d8;
   font-size: 30rpx;
   font-weight: 800;
   box-shadow:
@@ -409,7 +387,7 @@ page,
   height: 60rpx;
   line-height: 60rpx;
   background: linear-gradient(135deg, #ffe0a1, #f3b84d);
-  color: #11100d;
+  color: #ede6d8;
   border-radius: 999rpx;
   font-size: 22rpx;
   font-weight: 800;
@@ -461,15 +439,19 @@ page,
 }
 
 .item-icon {
-  width: 44rpx;
-  height: 44rpx;
+  width: 48rpx;
+  height: 48rpx;
   margin-right: 16rpx;
-  line-height: 44rpx;
-  font-size: 26rpx;
+  line-height: 48rpx;
+  font-size: 32rpx;
+  font-weight: normal;
+  font-family: system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  letter-spacing: normal;
   text-align: center;
   border-radius: 12rpx;
   background: linear-gradient(135deg, rgba(247, 198, 106, 0.2), rgba(247, 198, 106, 0.06));
   border: 1rpx solid rgba(247, 198, 106, 0.25);
+  flex-shrink: 0;
 }
 
 .item-label {
@@ -480,79 +462,6 @@ page,
   color: rgba(255, 255, 255, 0.4);
   font-size: 30rpx;
   font-weight: 300;
-}
-
-.records {
-  background:
-    linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.055)),
-    rgba(12, 15, 24, 0.78);
-  border: 1rpx solid rgba(255, 255, 255, 0.18);
-  border-radius: 24rpx;
-  padding: 20rpx 24rpx;
-  margin-bottom: 16rpx;
-  box-shadow:
-    0 20rpx 50rpx rgba(0, 0, 0, 0.32),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20rpx);
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  font-weight: 800;
-  margin-bottom: 14rpx;
-  font-size: 28rpx;
-  letter-spacing: 0.3rpx;
-}
-
-.section-title::before {
-  content: "";
-  display: inline-block;
-  width: 5rpx;
-  height: 24rpx;
-  margin-right: 12rpx;
-  background: linear-gradient(180deg, #ffe0a1, #f3b84d);
-  border-radius: 3rpx;
-}
-
-.record-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.record {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14rpx 0;
-  color: rgba(255, 255, 255, 0.72);
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.06);
-  font-size: 24rpx;
-}
-
-.record:last-child {
-  border-bottom: 0;
-}
-
-.record-remark {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.plus {
-  color: #5fe5a8;
-  font-weight: 800;
-  font-size: 28rpx;
-}
-
-.empty-tip {
-  padding: 16rpx 0;
-  color: rgba(255, 255, 255, 0.32);
-  text-align: center;
-  font-size: 22rpx;
-  font-weight: 600;
 }
 
 .product {
@@ -589,7 +498,7 @@ page,
 .buy-btn {
   min-width: 180rpx;
   margin: 0;
-  color: #11100d;
+  color: #ede6d8;
   background: linear-gradient(135deg, #ffe0a1, #f3b84d);
   border-radius: 999rpx;
   font-size: 24rpx;

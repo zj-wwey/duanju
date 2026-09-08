@@ -262,7 +262,12 @@ public class WebhookController {
     @PostMapping("/cloudflare/stream")
     public R<Void> cloudflareStreamNotify(@RequestBody Map<String, Object> payload,
                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // 入口日志:即使后续校验失败也能确认请求到达 (不打印 token,避免泄露)
+        log.info("Cloudflare Stream webhook arrived: hasPayload={}, hasAuthHeader={}, serviceEnabled={}",
+                payload != null, authHeader != null, cloudflareStreamService.isEnabled());
+
         if (!cloudflareStreamService.isEnabled()) {
+            log.warn("Cloudflare Stream webhook: service not enabled, returning 200 to stop retries");
             return R.ok();
         }
         // 鉴权:必须有配置的 token 且与请求 Bearer Token 匹配
@@ -275,6 +280,8 @@ public class WebhookController {
             token = token.substring(7);
         }
         if (!cloudflareWebhookToken.equals(token)) {
+            log.warn("Cloudflare Stream webhook: token mismatch (got length={}, expected length={})",
+                    token == null ? 0 : token.length(), cloudflareWebhookToken.length());
             throw new IllegalArgumentException("invalid cloudflare webhook token");
         }
         cloudflareStreamService.handleStreamCompleted(payload);

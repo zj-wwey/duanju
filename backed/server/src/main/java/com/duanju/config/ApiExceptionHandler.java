@@ -3,11 +3,13 @@ package com.duanju.config;
 import com.duanju.common.ForbiddenException;
 import com.duanju.common.R;
 import com.duanju.service.I18nService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -67,9 +69,16 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
-    public R<Void> notFound(NoResourceFoundException ex, Locale locale) {
-        log.warn("Resource not found: {}", ex.getResourcePath());
+    public R<Void> notFound(NoResourceFoundException ex, HttpServletRequest request, Locale locale) {
+        log.warn("Resource not found: method={} uri={} path={}", request.getMethod(), request.getRequestURI(), ex.getResourcePath());
         return R.failWithCode("RESOURCE_NOT_FOUND");
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public R<Void> methodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request, Locale locale) {
+        log.error("HTTP method not supported: method={} uri={} supported={} query={}",
+                request.getMethod(), request.getRequestURI(), ex.getSupportedHttpMethods(), request.getQueryString());
+        return R.failWithCode("METHOD_NOT_ALLOWED", "方法不允许: " + request.getMethod() + " " + request.getRequestURI());
     }
 
     @ExceptionHandler(DataAccessException.class)
@@ -84,8 +93,9 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public R<Void> fallback(Exception ex, Locale locale) {
-        log.error("未处理的异常: {}: {}", ex.getClass().getName(), ex.getMessage(), ex);
+    public R<Void> fallback(Exception ex, HttpServletRequest request, Locale locale) {
+        log.error("未处理的异常: method={} uri={} {}: {}",
+                request.getMethod(), request.getRequestURI(), ex.getClass().getName(), ex.getMessage(), ex);
         return R.failWithCode("SERVER_BUSY");
     }
 }

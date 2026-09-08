@@ -27,7 +27,9 @@
                 <span v-else>{{ (profile.nickname || profile.username || 'A')[0] }}</span>
               </div>
               <input ref="avatarInputRef" type="file" accept="image/*" hidden @change="selectAvatar" />
-              <button class="btn-ghost" @click="avatarInputRef?.click()">{{ t('admin.uploadAvatar') }}</button>
+              <button class="btn-ghost" :disabled="isUploadingAvatar" @click="avatarInputRef?.click()">
+                {{ isUploadingAvatar ? t('admin.saving') : t('admin.uploadAvatar') }}
+              </button>
             </div>
 
             <div class="form-fields">
@@ -122,6 +124,9 @@ const changingPassword = ref(false)
 const avatarInputRef = ref(null)
 const activePanel = ref('profile')
 const avatarPreview = ref('')
+// 头像上传中状态 + 已上传 objectKey (POST /avatar 端点已自动落库,前端保留 objectKey 以备后续使用)
+const isUploadingAvatar = ref(false)
+const avatarObjectKey = ref('')
 
 const profileForm = reactive({
   nickname: ''
@@ -204,7 +209,7 @@ function resetPassword() {
   passwordForm.confirmPassword = ''
 }
 
-function selectAvatar(event) {
+async function selectAvatar(event) {
   const file = event.target.files?.[0]
   if (!file) return
   if (!file.type.startsWith('image/')) {
@@ -212,11 +217,20 @@ function selectAvatar(event) {
     return
   }
 
-  const reader = new FileReader()
-  reader.onload = () => {
-    avatarPreview.value = reader.result
+  isUploadingAvatar.value = true
+  try {
+    // 选了文件后立即调 multipart 端点上传,后端返回 {url, objectKey} 并自动落库
+    const data = await api.uploadAdminAvatar(file)
+    avatarPreview.value = data?.url || avatarPreview.value
+    avatarObjectKey.value = data?.objectKey || ''
+    ElMessage.success(t('admin.saveSuccess'))
+  } catch (e) {
+    ElMessage.error(e.message || t('admin.saveFailed'))
+  } finally {
+    // 清空 input value,允许再次选择同一文件
+    if (event.target) event.target.value = ''
+    isUploadingAvatar.value = false
   }
-  reader.readAsDataURL(file)
 }
 
 function formatDate(dateStr) {

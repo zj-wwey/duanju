@@ -41,6 +41,13 @@ export const api = {
   drama(id) {
     return request({ url: '/dramas/' + id })
   },
+  feed(params) {
+    const query = Object.entries(params || {})
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => encodeURIComponent(key) + '=' + encodeURIComponent(value))
+      .join('&')
+    return request({ url: '/dramas/feed' + (query ? '?' + query : '') })
+  },
   playUrl(episodeId) {
     return request({ url: '/user/video/play/' + episodeId })
   },
@@ -49,6 +56,38 @@ export const api = {
   },
   favorites() {
     return request({ url: '/user/favorites' })
+  },
+  toggleLike(dramaId) {
+    return request({ url: '/user/likes/' + dramaId + '/toggle', method: 'POST' })
+  },
+  dramaComments(dramaId, page = 1, pageSize = 20) {
+    return request({ url: '/dramas/' + dramaId + '/comments?page=' + page + '&pageSize=' + pageSize })
+  },
+  dramaCommentReplies(rootId, page = 1, pageSize = 20) {
+    return request({ url: '/dramas/comments/' + rootId + '/replies?page=' + page + '&pageSize=' + pageSize })
+  },
+  addComment(dramaId, content, episodeId) {
+    return request({ url: '/user/comments', method: 'POST', data: { dramaId, episodeId, content } })
+  },
+  replyComment(dramaId, episodeId, parentId, replyToUserId, content) {
+    return request({ url: '/user/comments/reply', method: 'POST',
+      data: { dramaId, episodeId, parentId, replyToUserId, content } })
+  },
+  deleteComment(commentId) {
+    return request({ url: '/user/comments/' + commentId, method: 'DELETE' })
+  },
+  // ---- 通知 ----
+  notifications(page = 1, pageSize = 20) {
+    return request({ url: '/user/notifications?page=' + page + '&pageSize=' + pageSize })
+  },
+  notificationUnreadCount() {
+    return request({ url: '/user/notifications/unread-count' })
+  },
+  markAllNotificationsRead() {
+    return request({ url: '/user/notifications/read-all', method: 'POST' })
+  },
+  markNotificationRead(id) {
+    return request({ url: '/user/notifications/' + id + '/read', method: 'POST' })
   },
   saveHistory(data) {
     return request({ url: '/user/history', method: 'POST', data })

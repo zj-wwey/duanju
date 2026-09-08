@@ -51,6 +51,8 @@ create table admin_user (
   username varchar(64) not null comment '管理员登录账号',
   password_hash varchar(128) not null comment '密码哈希，格式为salt:hash',
   nickname varchar(64) not null comment '管理员昵称',
+  avatar varchar(1000) comment '管理员头像URL',
+  avatar_object_key varchar(255) comment '管理员头像 R2 对象 key (用于级联删除)',
   status tinyint not null default 1 comment '状态：1启用，0禁用，-1删除',
   created_at datetime not null default current_timestamp comment '创建时间',
   updated_at datetime not null default current_timestamp on update current_timestamp comment '更新时间',
@@ -90,6 +92,7 @@ create table app_user (
   password_hash varchar(128) not null comment '密码哈希，格式为salt:hash',
   nickname varchar(64) not null comment '用户昵称',
   avatar_url varchar(1000) comment '头像URL',
+  avatar_object_key varchar(255) comment '用户头像 R2 对象 key (用于级联删除)',
   points int not null default 0 comment '当前可用积分余额',
   notice_enabled tinyint not null default 1 comment '消息通知开关：1开，0关',
   auto_next_enabled tinyint not null default 1 comment '自动播放下一集：1开，0关',
@@ -151,9 +154,13 @@ create table drama (
   id bigint primary key auto_increment comment '短剧ID',
   title varchar(128) not null comment '短剧标题',
   description varchar(1000) comment '短剧简介',
+  author_name varchar(64) comment '作者/出品方名称',
   cover_url varchar(1000) comment '短剧封面图片URL',
+  cover_object_key varchar(255) comment '短剧封面 R2 对象 key (用于级联删除)',
   horizontal_cover_url varchar(1000) comment '横版封面图片URL',
+  horizontal_cover_object_key varchar(255) comment '横版封面 R2 对象 key (用于级联删除)',
   vertical_cover_url varchar(1000) comment '竖版封面图片URL',
+  vertical_cover_object_key varchar(255) comment '竖版封面 R2 对象 key (用于级联删除)',
   tags varchar(255) comment '短剧标签，英文逗号分隔',
   free_episode_count int not null default 0 comment '免费观看的前N集数量',
   total_episodes int not null default 0 comment '总集数',
@@ -167,6 +174,7 @@ create table drama (
   publish_date date comment '分类筛选：上新日期',
   online_time datetime comment '上线时间',
   hot_score int not null default 0 comment '推荐排序：热度值',
+  like_count int not null default 0 comment '点赞总数',
   recommended tinyint not null default 0 comment '是否推荐：1推荐，0否',
   status tinyint not null default 1 comment '状态：1上架，0下架，-1删除',
   sort_order int not null default 0 comment '排序值，越小越靠前',
@@ -187,7 +195,11 @@ create table drama_episode (
   title varchar(128) not null comment '分集标题',
   description varchar(1000) comment '分集简介',
   cover_url varchar(1000) comment '分集封面图片URL',
+  cover_object_key varchar(255) comment '分集封面 R2 对象 key (用于级联删除)',
   video_url varchar(1000) not null comment '可播放视频地址，支持真实m3u8或mp4链接',
+  cloudflare_uid varchar(64) comment 'Cloudflare Stream 视频 UID (cloudflare 存储模式)',
+  hls_url varchar(1000) comment 'Cloudflare Stream HLS 播放列表 URL (webhook 异步回写)',
+  transcode_status tinyint not null default 0 comment '转码状态：0待处理，1转码中，2完成，-1失败',
   price_points int not null default 1 comment '解锁本集需要消耗的积分，0表示免费',
   duration_seconds int not null default 0 comment '视频时长，单位秒',
   is_free tinyint not null default 0 comment '是否免费试看：1免费，0付费',
@@ -530,3 +542,34 @@ insert into currency_rate (currency_code, currency_name, locale, rate_to_usd, sy
 ('RUB', '卢布', 'ru', 92.000000, '₽', 2, 1, 14),
 ('TRY', '土耳其里拉', 'tr', 32.500000, '₺', 2, 1, 15),
 ('AED', '阿联酋迪拉姆', 'ar', 3.670000, 'د.إ', 2, 1, 16);
+
+-- ============================================================================
+-- 模块七：点赞与评论
+-- ============================================================================
+
+-- 用户点赞短剧表
+create table user_like (
+  id bigint primary key auto_increment comment '点赞ID',
+  user_id bigint not null comment '用户ID',
+  drama_id bigint not null comment '短剧ID',
+  created_at datetime not null default current_timestamp comment '点赞时间',
+  unique key uk_user_like (user_id, drama_id),
+  key idx_like_drama (drama_id),
+  constraint fk_like_user foreign key (user_id) references app_user(id),
+  constraint fk_like_drama foreign key (drama_id) references drama(id)
+) engine=InnoDB default charset=utf8mb4 comment='用户点赞短剧表';
+
+-- 短剧评论表
+create table drama_comment (
+  id bigint primary key auto_increment comment '评论ID',
+  user_id bigint not null comment '评论用户ID',
+  drama_id bigint not null comment '短剧ID',
+  episode_id bigint null comment '关联分集ID，可空表示整剧',
+  content varchar(500) not null comment '评论内容',
+  status tinyint not null default 1 comment '状态：1正常，-1删除',
+  created_at datetime not null default current_timestamp comment '评论时间',
+  key idx_comment_drama (drama_id, status, id),
+  key idx_comment_user (user_id),
+  constraint fk_comment_user foreign key (user_id) references app_user(id),
+  constraint fk_comment_drama foreign key (drama_id) references drama(id)
+) engine=InnoDB default charset=utf8mb4 comment='短剧评论表';

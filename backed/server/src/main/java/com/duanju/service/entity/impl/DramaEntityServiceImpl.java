@@ -43,4 +43,14 @@ public class DramaEntityServiceImpl extends ServiceImpl<DramaMapper, Drama> impl
     public int syncDramaEpisodeTotal(Long dramaId) {
         return baseMapper.syncDramaEpisodeTotal(dramaId);
     }
+
+    @Override
+    public List<Map<String, Object>> feedDramas(String contentType, Boolean recommended, int offset, int size) {
+        return baseMapper.feedDramas(contentType, recommended, offset, size);
+    }
+
+    @Override
+    public int countFeedDramas(String contentType, Boolean recommended) {
+        return baseMapper.countFeedDramas(contentType, recommended);
+    }
 }

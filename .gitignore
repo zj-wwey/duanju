@@ -81,6 +81,12 @@ coverage/
 front/uniapp/.hbuilderx/
 front/uniapp/manifest.local.json
 
+# ====== 二进制压缩包 / 构建产物 ======
+*.tar.gz
+*.zip
+*.tgz
+*.7z
+
 # ====== 其他 ======
 *.tmp
 *.temp

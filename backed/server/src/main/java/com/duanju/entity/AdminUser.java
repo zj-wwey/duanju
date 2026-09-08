@@ -24,6 +24,9 @@ public class AdminUser {
 
     private String avatar;
 
+    @TableField("avatar_object_key")
+    private String avatarObjectKey;
+
     private Integer status;
 
     @TableField("created_at")

@@ -507,6 +507,79 @@ body {
   height: 40px;
 }
 
+.upload-speed {
+  font-size: 12px;
+  color: #67c23a;
+  margin-left: 4px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.episode-pending-row {
+  border: 1px solid rgba(212, 175, 104, 0.2) !important;
+  background: rgba(212, 175, 104, 0.04);
+}
+.episode-pending-info {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.episode-pending-progress {
+  grid-column: 3 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.pending-info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pending-drama-name {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+.pending-file-info {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pending-file-name {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pending-file-size {
+  font-size: 12px;
+  color: #67c23a;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pending-progress-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.pending-creating-text {
+  color: #409eff;
+  font-size: 12px;
+}
+.pending-fail-text {
+  color: #f56c6c;
+  font-size: 12px;
+}
+.pending-action-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .auth-role .el-segmented__item-label {
   padding: 0 16px;
 }
@@ -1656,6 +1729,18 @@ section {
   color: #cbd5e1;
   background: rgba(148, 163, 184, 0.12);
   border-color: rgba(148, 163, 184, 0.24);
+}
+
+.tag-pending {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.32);
+}
+
+.tag-error {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.34);
 }
 
 .metric-good {

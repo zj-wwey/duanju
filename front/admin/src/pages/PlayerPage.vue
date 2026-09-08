@@ -5,7 +5,7 @@
       <h1>{{ t('player.episode', { num: activeEpisode?.episodeNo || 1 }) }}</h1>
       <VideoPlayer
         :episode-id="activeEpisode?.id"
-        :src="activeEpisode?.videoUrl || ''"
+        :src="activeEpisode?.hls_url || activeEpisode?.hlsUrl || activeEpisode?.videoUrl || ''"
         :poster="activeEpisode?.coverUrl || store.activeDrama.value?.coverUrl || ''"
         :title="lockedText"
         :points-text="t('nav.points', { points: store.points.value })"

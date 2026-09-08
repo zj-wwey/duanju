@@ -41,9 +41,15 @@ export async function loadLocaleMessages(locale) {
     i18n.global.setLocaleMessage(locale, module.default)
     loadedLocales.add(locale)
   } catch (err) {
-    console.warn(`Failed to load locale: ${locale}, falling back to en-US`, err)
-    if (!loadedLocales.has('en-US')) {
-      await loadLocaleMessages('en-US')
+    console.warn(`Failed to load locale: ${locale}`, err)
+    if (locale !== 'en-US' && !loadedLocales.has('en-US')) {
+      try {
+        const enModule = await import(`../../../shared/i18n/en-US.json`)
+        i18n.global.setLocaleMessage('en-US', enModule.default)
+        loadedLocales.add('en-US')
+      } catch (e2) {
+        console.warn('Failed to load en-US fallback:', e2)
+      }
     }
   }
 }

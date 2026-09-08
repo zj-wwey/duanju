@@ -7,7 +7,7 @@
     <!-- ① 等级状态卡 -->
     <view class="status-card" v-if="status" :style="{ borderColor: levelColor(status.current_level) }">
       <view class="status-badge" :style="{ background: levelColor(status.current_level) }">
-        {{ levelDisplayName(status.current_level) }}
+        {{ levelShortName(status.current_level) }}
       </view>
       <view class="status-info">
         <view class="status-source" v-if="status.level_source">
@@ -214,11 +214,18 @@ export default {
       return [1, 7]
     },
     exchangeCost() {
-      const backendPrices = this.status?.exchange_prices || this.status?.exchangePrices
-      const priceTable = backendPrices || EXCHANGE_PRICE
-      const price = (priceTable[this.exchangeLevel] || {})[this.exchangeDays] || 0
-      const final = this.isRenewal ? Math.ceil(price * RENEWAL_DISCOUNT) : price
-      return this.formatNumber(final)
+      try {
+        const backendPrices = this.status?.exchange_prices || this.status?.exchangePrices
+        const priceTable = (backendPrices && typeof backendPrices === 'object' && Object.keys(backendPrices).length > 0) ? backendPrices : EXCHANGE_PRICE
+        const priceLevel = priceTable[this.exchangeLevel] || {}
+        const price = priceLevel[this.exchangeDays]
+        const validPrice = typeof price === 'number' ? price : 0
+        const final = this.isRenewal ? Math.ceil(validPrice * RENEWAL_DISCOUNT) : validPrice
+        const formatted = this.formatNumber(final)
+        return formatted == null || formatted === undefined ? String(final) : formatted
+      } catch (e) {
+        return '0'
+      }
     },
     renewalDiscountText() {
       if (this.locale === 'zh-CN' || this.locale === 'zh-TW') {
@@ -372,6 +379,11 @@ export default {
       const entry = LEVEL_MAP[level] || LEVEL_MAP.NONE
       return this.t(entry.nameKey) || level
     },
+    levelShortName(level) {
+      const entry = LEVEL_MAP[level] || LEVEL_MAP.NONE
+      const short = this.t(entry.shortKey)
+      return short && short !== entry.shortKey ? short : (this.t(entry.nameKey) || level)
+    },
     levelColor,
     formatNumber(value) {
       return formatNumber(value, this.locale)
@@ -434,8 +446,8 @@ page,
   border-radius: 50%;
   color: #111;
   font-weight: 800;
-  font-size: 24rpx;
-  letter-spacing: 0.4rpx;
+  font-size: 36rpx;
+  letter-spacing: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -443,6 +455,7 @@ page,
   box-shadow:
     0 12rpx 30rpx rgba(0, 0, 0, 0.3),
     inset 0 2rpx 0 rgba(255, 255, 255, 0.4);
+  line-height: 1;
 }
 
 .status-info {

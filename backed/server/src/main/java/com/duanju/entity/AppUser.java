@@ -33,6 +33,9 @@ public class AppUser {
     @TableField("avatar_url")
     private String avatarUrl;
 
+    @TableField("avatar_object_key")
+    private String avatarObjectKey;
+
     private Integer points;
 
     @TableField("notice_enabled")

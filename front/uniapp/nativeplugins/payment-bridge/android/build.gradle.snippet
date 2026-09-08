@@ -1,0 +1,21 @@
+# PaymentBridge Android 原生插件 — 依赖配置
+#
+# 把下面这段加入宿主 App 的 app/build.gradle (android 块内, dependencies 中):
+
+# ---- 必选: Google Play Billing Library 6.x ----
+implementation "com.android.billingclient:billing:6.1.0"
+
+# ---- 可选: Stripe Android SDK (仅在需要 Google Pay Wallet / Apple Pay Wallet 时) ----
+# implementation "com.stripe:stripe-android:20.52.1"
+# implementation "com.stripe:stripe-googlepay:20.52.1"
+
+# ---- 必选: 兼容 Java 8 lambda ----
+android {
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+# ---- AndroidManifest 需要添加的权限 (宿主 AndroidManifest.xml) ----
+# <uses-permission android:name="com.android.vending.BILLING"/>

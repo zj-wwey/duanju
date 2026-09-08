@@ -3,29 +3,33 @@
     <view class="grad-top"></view>
     <view class="grad-bottom"></view>
 
-    <view class="back-btn" @click="emit('back')">
+    <view class="back-btn" @tap="emit('back')">
       <text class="back-text">‹</text>
     </view>
 
     <view class="actions">
-      <view class="action" @click="emit('favorite')">
-        <text class="action-icon" :style="{ color: favorite ? '#ff4d67' : '#ffffff' }">{{ favorite ? '♥' : '♡' }}</text>
-        <text class="action-label">{{ favoriteText }}</text>
+      <view class="action" @tap="emit('favorite')">
+                <view class="heart-icon" :class="{ 'is-active': favoriteActive }">
+          <view class="heart-circle heart-left"></view>
+          <view class="heart-circle heart-right"></view>
+          <view class="heart-bottom"></view>
+        </view>
+        <text class="action-label">{{ favoriteLabel }}</text>
       </view>
-      <view class="action" @click="emit('like')">
-        <text class="action-icon">★</text>
+      <view class="action" @tap="emit('like')">
+        <text class="action-icon" :style="{ color: likeActive ? '#f3b84d' : '#ffffff' }">★</text>
         <text class="action-label">{{ likeText }}</text>
       </view>
-      <view class="action" @click="emit('comment')">
-        <text class="action-icon">✦</text>
+      <view class="action" @tap="emit('comment')">
+        <text class="action-icon" style="font-size:54rpx">💬</text>
         <text class="action-label">{{ commentText }}</text>
       </view>
-      <view class="action" @click="emit('share')">
-        <text class="action-icon">↗</text>
+      <view class="action" @tap="emit('share')">
+        <text class="action-icon" style="font-size:56rpx">⇪</text>
         <text class="action-label">{{ shareText }}</text>
       </view>
-      <view class="action" @click="emit('details')">
-        <text class="action-icon">☰</text>
+      <view class="action" @tap="emit('details')">
+        <text class="action-icon" style="font-size:56rpx">☰</text>
         <text class="action-label">{{ detailsText }}</text>
       </view>
     </view>
@@ -35,12 +39,24 @@
       <text class="desc" v-if="episodeTitle">{{ episodeTitle }}</text>
     </view>
 
-    <view class="episode-bar" @click="emit('episode')">
+    <view class="episode-bar" @tap="emit('episode')">
       <text class="episode-text">{{ episodeBrowseText }}</text>
     </view>
 
-    <view class="progress-bar">
-      <view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
+    <!-- 进度条 -->
+    <view class="progress-wrap"
+          :style="{ bottom: progressBottom + 'rpx' }"
+          catchtouchmove="true"
+          @touchstart="onProgressTouchStart"
+          @touchmove="onProgressTouchMove"
+          @touchend="onProgressTouchEnd">
+      <text class="progress-time">{{ progressCurrent }}</text>
+      <view class="progress-inner">
+        <view class="progress-track"></view>
+        <view class="progress-fill" :style="{ width: fillWidthRpx + 'rpx' }"></view>
+        <view class="progress-thumb" :style="{ left: thumbLeftRpx + 'rpx' }"></view>
+      </view>
+      <text class="progress-time progress-time-right">{{ progressTotal }}</text>
     </view>
   </view>
 </template>
@@ -49,25 +65,35 @@
 export default {
   data() {
     return {
-      favorite: false,
-      favoriteText: 'Save',
-      likeText: 'Like',
-      commentText: 'Comment',
-      shareText: 'Share',
-      detailsText: 'Details',
+      favoriteActive: false,
+      favoriteLabel: '',
+      likeActive: false,
+      likeText: '',
+      commentText: '',
+      shareText: '',
+      detailsText: '',
       episodeBrowseText: '',
       dramaTitle: '',
       episodeTitle: '',
       episodeNo: 1,
       total: 0,
-      progressPercent: 0
+      progressPercent: 0,
+      fillWidthRpx: 0,
+      thumbLeftRpx: 0,
+      progressCurrent: '0:00',
+      progressTotal: '0:00',
+      durationSeconds: 0,
+      progressBottom: 80
     }
   },
   created() {
     const self = this
+    self.progressBottom = 56 + 12
+
     uni.$on('updatePlayerOverlay', function(data) {
-      if (data.favorite !== undefined) self.favorite = data.favorite
-      if (data.favoriteText !== undefined) self.favoriteText = data.favoriteText
+      if (data.favoriteActive !== undefined) self.favoriteActive = data.favoriteActive === true
+      if (data.favoriteText !== undefined) self.favoriteLabel = data.favoriteText
+      if (data.likeActive !== undefined) self.likeActive = data.likeActive === true
       if (data.likeText !== undefined) self.likeText = data.likeText
       if (data.commentText !== undefined) self.commentText = data.commentText
       if (data.shareText !== undefined) self.shareText = data.shareText
@@ -77,148 +103,99 @@ export default {
       if (data.episodeTitle !== undefined) self.episodeTitle = data.episodeTitle
       if (data.episodeNo !== undefined) self.episodeNo = data.episodeNo
       if (data.total !== undefined) self.total = data.total
-      if (data.progressPercent !== undefined) self.progressPercent = data.progressPercent
+      if (data.progressPercent !== undefined) {
+        self.progressPercent = data.progressPercent
+        self.applyPercent(data.progressPercent)
+      }
+      if (data.progressCurrent !== undefined) self.progressCurrent = data.progressCurrent
+      if (data.progressTotal !== undefined) {
+        self.progressTotal = data.progressTotal
+        const parts = (data.progressTotal || '0:00').split(':')
+        if (parts.length === 2) {
+          self.durationSeconds = parseInt(parts[0]) * 60 + parseInt(parts[1])
+        } else if (parts.length === 3) {
+          self.durationSeconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2])
+        }
+      }
     })
   },
   beforeDestroy() {
     uni.$off('updatePlayerOverlay')
   },
   methods: {
-    emit(type) {
-      uni.$emit('playerOverlayEvent', { type })
+    emit(type, data) {
+      uni.$emit('playerOverlayEvent', { type, data })
+    },
+    formatSec(s) {
+      s = Math.max(0, Math.floor(s))
+      const m = Math.floor(s / 60)
+      const sec = s % 60
+      return m + ':' + (sec < 10 ? '0' + sec : sec)
+    },
+    applyPercent(percent) {
+      const trackRpx = 530
+      const p = Math.max(0, Math.min(100, percent))
+      const pos = Math.round(trackRpx * p / 100)
+      this.fillWidthRpx = pos
+      this.thumbLeftRpx = pos - 12
+    },
+    onProgressTouchStart(e) { this.handleProgressTouch(e, true) },
+    onProgressTouchMove(e) { this.handleProgressTouch(e, false) },
+    onProgressTouchEnd() { this.emit('seekEnd') },
+    handleProgressTouch(e, isStart) {
+      try {
+        const t = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0]) || (e.detail && e.detail.touches && e.detail.touches[0])
+        if (!t) return
+        const touchX = t.clientX || t.pageX || t.x || 0
+        if (!touchX) return
+        const sys = uni.getSystemInfoSync()
+        const ratio = 750 / sys.windowWidth
+        const totalRpx = 750 - 110 - 110
+        const xRpx = touchX * ratio
+        const localRpx = xRpx - 110
+        const percent = Math.max(0, Math.min(100, (localRpx / totalRpx) * 100))
+        this.progressPercent = percent
+        this.applyPercent(percent)
+        if (this.durationSeconds > 0) {
+          this.progressCurrent = this.formatSec(Math.floor(percent / 100 * this.durationSeconds))
+        }
+        this.emit('seek', { percent, isStart })
+      } catch (err) {}
     }
   }
 }
 </script>
 
 <style>
-.overlay {
-  flex: 1;
-  background-color: transparent;
-  pointer-events: none;
-}
+font-family: 'PingFang SC', 'HarmonyOS Sans', 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
+.overlay { flex: 1; background-color: transparent; pointer-events: auto; }
+.grad-top { position: absolute; top: 0; left: 0; right: 0; height: 200rpx; background-image: linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0)); pointer-events: none; }
+.grad-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: 400rpx; background-image: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0.2) 40%, rgba(0,0,0,0)); pointer-events: none; }
+.back-btn { position: absolute; top: 16rpx; left: 16rpx; width: 72rpx; height: 72rpx; border-radius: 36rpx; justify-content: center; align-items: center; pointer-events: auto; background-color: rgba(0, 0, 0, 0.35); border-width: 1rpx; border-style: solid; border-color: rgba(255, 255, 255, 0.15); }
+.back-btn:active { background-color: rgba(0, 0, 0, 0.55); }
+.back-text { font-size: 42rpx; font-weight: 300; color: rgba(255, 255, 255, 0.85); margin-top: -3rpx; }
+.actions { position: absolute; right: 16rpx; bottom: 260rpx; flex-direction: column; align-items: center; pointer-events: auto; }
+.action { width: 88rpx; margin-bottom: 28rpx; align-items: center; justify-content: center; }
+.action-icon { font-size: 60rpx; text-align: center; color: #ffffff; font-weight: 900; pointer-events: none; text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.5); }
+.action-label { font-size: 22rpx; color: rgba(255, 255, 255, 0.9); text-align: center; margin-top: 4rpx; pointer-events: none; text-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.4); }
+.bottom { position: absolute; left: 24rpx; right: 130rpx; bottom: 158rpx; pointer-events: auto; }
+.title { font-size: 30rpx; font-weight: 700; color: #ffffff; lines: 2; text-overflow: ellipsis; }
+.desc { font-size: 22rpx; color: rgba(255, 255, 255, 0.8); margin-top: 6rpx; lines: 1; text-overflow: ellipsis; }
+.episode-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 56rpx; padding-left: 24rpx; padding-right: 24rpx; flex-direction: row; align-items: center; background-image: linear-gradient(to top, rgba(0,0,0,0.65), rgba(0,0,0,0.35)); pointer-events: auto; }
+.episode-text { font-size: 24rpx; font-weight: 700; color: rgba(255, 255, 255, 0.9); pointer-events: none; }
+.progress-wrap { position: absolute; left: 0; right: 0; height: 80rpx; flex-direction: row; align-items: center; pointer-events: auto; }
+.progress-time { width: 110rpx; font-size: 22rpx; font-weight: 600; color: rgba(255, 255, 255, 0.9); text-align: center; pointer-events: none; }
+.progress-time-right { text-align: center; }
+.progress-inner { flex: 1; height: 80rpx; pointer-events: none; }
+.progress-track { position: absolute; left: 0; right: 0; top: 38rpx; height: 4rpx; background-color: rgba(255, 255, 255, 0.3); border-radius: 2rpx; pointer-events: none; }
+.progress-fill { position: absolute; left: 0; top: 36rpx; height: 8rpx; background-color: #ffffff; border-radius: 4rpx; pointer-events: none; }
+.progress-thumb { position: absolute; top: 28rpx; width: 24rpx; height: 24rpx; border-radius: 12rpx; background-color: #ffffff; pointer-events: none; }
 
-.grad-top {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 200rpx;
-  background-image: linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0));
-  pointer-events: none;
-}
-
-.grad-bottom {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 400rpx;
-  background-image: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0.2) 40%, rgba(0,0,0,0));
-  pointer-events: none;
-}
-
-.back-btn {
-  position: absolute;
-  top: 16rpx;
-  left: 16rpx;
-  width: 56rpx;
-  height: 56rpx;
-  justify-content: center;
-  align-items: center;
-  pointer-events: auto;
-}
-
-.back-text {
-  font-size: 48rpx;
-  font-weight: 300;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.actions {
-  position: absolute;
-  right: 16rpx;
-  bottom: 260rpx;
-  flex-direction: column;
-  align-items: center;
-  pointer-events: auto;
-}
-
-.action {
-  width: 96rpx;
-  margin-bottom: 24rpx;
-  justify-content: center;
-  align-items: center;
-}
-
-.action-icon {
-  font-size: 48rpx;
-  text-align: center;
-  color: #ffffff;
-}
-
-.action-label {
-  font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.85);
-  text-align: center;
-  margin-top: 4rpx;
-}
-
-.bottom {
-  position: absolute;
-  left: 24rpx;
-  right: 120rpx;
-  bottom: 80rpx;
-  pointer-events: auto;
-}
-
-.title {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #ffffff;
-  lines: 1;
-  text-overflow: ellipsis;
-}
-
-.desc {
-  font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 6rpx;
-  lines: 1;
-  text-overflow: ellipsis;
-}
-
-.episode-bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 56rpx;
-  padding-left: 24rpx;
-  padding-right: 24rpx;
-  flex-direction: row;
-  align-items: center;
-  background-image: linear-gradient(to top, rgba(0,0,0,0.65), rgba(0,0,0,0.35));
-  pointer-events: auto;
-}
-
-.episode-text {
-  font-size: 22rpx;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.progress-bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 56rpx;
-  height: 4rpx;
-  background-color: rgba(255, 255, 255, 0.15);
-}
-
-.progress-fill {
-  height: 4rpx;
-  background-image: linear-gradient(to right, #ffe0a1, #f3b84d);
-}
-</style>
+/* Pure CSS heart shape */
+.heart-icon { position: relative; width: 46rpx; height: 42rpx; pointer-events: none; }
+.heart-circle { position: absolute; width: 26rpx; height: 26rpx; border-radius: 50%; background-color: #ffffff; }
+.heart-left { top: 0; left: 0; }
+.heart-right { top: 0; right: 0; }
+.heart-bottom { position: absolute; top: 13rpx; left: 10rpx; width: 26rpx; height: 26rpx; background-color: #ffffff; transform: rotate(45deg); }
+.heart-icon.is-active .heart-circle { background-color: #ff4d67; }
+.heart-icon.is-active .heart-bottom { background-color: #ff4d67; }</style>

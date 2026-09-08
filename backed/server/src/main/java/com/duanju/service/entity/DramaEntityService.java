@@ -21,4 +21,8 @@ public interface DramaEntityService extends IService<Drama> {
     int updateDrama(Map<String, Object> drama);
 
     int syncDramaEpisodeTotal(Long dramaId);
+
+    List<Map<String, Object>> feedDramas(String contentType, Boolean recommended, int offset, int size);
+
+    int countFeedDramas(String contentType, Boolean recommended);
 }

@@ -1,0 +1,15 @@
+# PaymentBridge iOS 原生插件 — 依赖配置
+#
+# 在 Xcode 宿主项目根目录 Podfile 中添加:
+
+platform :ios, '13.0'
+
+# ---- 可选: Stripe iOS SDK (仅在需要 Apple Pay Wallet 时) ----
+# pod 'Stripe', '~> 23.12'
+# pod 'StripeApplePay', '~> 23.12'
+
+# ---- StoreKit / PassKit 是系统框架, 不需要 pod, 但需要在 Xcode → Signing & Capabilities 启用:
+# ✅ In-App Purchase
+# ✅ Apple Pay
+
+# 然后执行: pod install

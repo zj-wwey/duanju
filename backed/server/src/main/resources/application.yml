@@ -17,6 +17,7 @@ spring:
       host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
       database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD:}
 
 mybatis:
   configuration:
@@ -50,6 +51,24 @@ duanju:
     provider: ${DUANJU_STORAGE_PROVIDER:local}
     public-base-url: ${DUANJU_STORAGE_PUBLIC_BASE_URL:http://127.0.0.1:8080/uploads}
     local-upload-dir: ${DUANJU_STORAGE_LOCAL_UPLOAD_DIR:backed/uploads}
+    r2:
+      # 是否启用 Cloudflare R2 (启用后 provider 自动路由到 R2)
+      enabled: ${R2_ENABLED:false}
+      # Cloudflare Account ID
+      account-id: ${CLOUDFLARE_R2_ACCOUNT_ID:}
+      # R2 Access Key ID (在 R2 → Manage R2 API Tokens 中创建,需 Object Read & Write 权限)
+      access-key-id: ${CLOUDFLARE_R2_ACCESS_KEY_ID:}
+      # R2 Secret Access Key
+      secret-access-key: ${CLOUDFLARE_R2_SECRET_ACCESS_KEY:}
+      # R2 Bucket 名称
+      bucket: ${CLOUDFLARE_R2_BUCKET:duanju}
+      # R2 S3 兼容端点 (https://<account-id>.r2.cloudflarestorage.com)
+      endpoint: ${CLOUDFLARE_R2_ENDPOINT:}
+      # 公开访问基础 URL (R2 Bucket 绑定自定义域名或开 public 访问后的 URL 前缀)
+      # 重要:末尾不要加 /r2 /uploads 等虚拟路径,R2 自定义域名(例如 cdn.marastel.com)会直接映射到桶根路径,
+      #      否则 GET 会 502/资源不存在。如果历史上曾写过带 /r2 的版本,StorageService.objectKeyFromPublicUrl
+      #      会在级联删除时自动剥离,但播放 URL 仍需在数据库里做一次性 REPLACE 修正。
+      public-base-url: ${CLOUDFLARE_R2_PUBLIC_BASE_URL:https://cdn.marastel.com}
   apple-iap:
     enabled: ${APPLE_IAP_ENABLED:false}
     bundle-id: ${APPLE_BUNDLE_ID:}
@@ -126,6 +145,20 @@ duanju:
     allowed-mime-types: video/mp4,video/x-m4v,video/webm,video/quicktime
     # Webhook 鉴权 Token (在 Cloudflare Dashboard → Stream → Settings → Webhooks 中配置 Bearer Token)
     webhook-auth-token: ${CLOUDFLARE_WEBHOOK_AUTH_TOKEN:}
+    # TUS 断点续传调优 (大文件上传)
+    # 直传阈值:超过此大小走 TUS,默认 200MB (Cloudflare PUT 上限)
+    direct-upload-threshold-bytes: ${CLOUDFLARE_DIRECT_UPLOAD_THRESHOLD:209715200}
+    # TUS 分片大小:网络稳定用 10MB,网络差用 2MB,默认 5MB (Cloudflare 推荐)
+    tus-chunk-size-bytes: ${CLOUDFLARE_TUS_CHUNK_SIZE:5242880}
+    # TUS 最大重试次数:偶发抖动 3 次,极差网络 5 次,默认 3
+    tus-max-retries: ${CLOUDFLARE_TUS_MAX_RETRIES:3}
+    # TUS 指数退避基础间隔 (毫秒):实际重试间隔 = base * 2^(attempt-1),如 1s/2s/4s
+    tus-retry-base-interval-ms: ${CLOUDFLARE_TUS_RETRY_BASE_INTERVAL:1000}
+    # 批量上传目录 (VPS 中转模式):管理员 scp/rsync 上传视频到此目录,后端扫描后推送到 Cloudflare
+    # 路径下按 dramaId 分子目录,如 /opt/duanju/batch-upload/123/*.mp4
+    batch-upload-dir: ${CLOUDFLARE_BATCH_UPLOAD_DIR:/opt/duanju/batch-upload}
+    # 批量上传并发数 (3-5 推荐,过高触发 Cloudflare 429)
+    batch-upload-concurrency: ${CLOUDFLARE_BATCH_UPLOAD_CONCURRENCY:3}
 
 management:
   endpoints:

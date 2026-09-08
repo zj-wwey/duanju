@@ -20,14 +20,26 @@ public class Drama {
 
     private String description;
 
+    @TableField("author_name")
+    private String authorName;
+
     @TableField("cover_url")
     private String coverUrl;
+
+    @TableField("cover_object_key")
+    private String coverObjectKey;
 
     @TableField("horizontal_cover_url")
     private String horizontalCoverUrl;
 
+    @TableField("horizontal_cover_object_key")
+    private String horizontalCoverObjectKey;
+
     @TableField("vertical_cover_url")
     private String verticalCoverUrl;
+
+    @TableField("vertical_cover_object_key")
+    private String verticalCoverObjectKey;
 
     private String tags;
 
@@ -63,6 +75,9 @@ public class Drama {
 
     @TableField("hot_score")
     private Integer hotScore;
+
+    @TableField("like_count")
+    private Integer likeCount;
 
     private Integer recommended;
 

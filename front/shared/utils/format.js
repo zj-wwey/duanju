@@ -5,7 +5,19 @@
 
 export function formatNumber(value, locale = 'en-US') {
   if (value == null) return '0'
-  return new Intl.NumberFormat(locale).format(Number(value) || 0)
+  const safeLocale = normalizeLocale(locale)
+  try {
+    return new Intl.NumberFormat(safeLocale).format(Number(value) || 0)
+  } catch {
+    return String(Number(value) || 0)
+  }
+}
+
+function normalizeLocale(locale) {
+  if (!locale) return 'en-US'
+  // uni-app 内部用 zh-Hans/zh-Hant，Intl 需要 zh-CN/zh-TW
+  const map = { 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW' }
+  return map[locale] || locale
 }
 
 export function formatDate(dateStr, locale = 'en-US', showTime = false) {

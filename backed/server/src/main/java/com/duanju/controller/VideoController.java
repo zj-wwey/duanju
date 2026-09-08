@@ -177,6 +177,56 @@ public class VideoController {
     }
 
     /**
+     * 续期签名播放 URL。
+     *
+     * <p>解决长视频播放过程中签名 URL 过期 (默认 1 小时) 的问题。
+     * 前端在 URL 即将过期前 (如剩余 5 分钟) 调本接口换取新的签名 URL,
+     * 无需中断播放重新拉剧集信息。</p>
+     *
+     * <p>权限校验与 /play/{episodeId} 一致:管理员/免费集/已解锁用户才能续期,
+     * 避免未授权用户通过续期接口持续观看付费内容。</p>
+     *
+     * <p>仅适用于 Cloudflare Stream 视频 (cloudflare_uid 非空)。
+     * 本地存储视频无签名 URL,调用返回 400。</p>
+     *
+     * @param episodeId 剧集 ID
+     * @return 新的签名 URL (有效期 signed-url-ttl-seconds,默认 3600 秒)
+     */
+    @GetMapping("/renew/{episodeId}")
+    public R<Map<String, Object>> renewSignedUrl(@PathVariable Long episodeId) {
+        Long userId = PrincipalHolder.userId();
+        Long adminId = PrincipalHolder.adminId();
+
+        DramaEpisode episode = dramaEpisodeService.lambdaQuery()
+                .eq(DramaEpisode::getId, episodeId)
+                .ge(DramaEpisode::getStatus, 0)
+                .one();
+
+        if (episode == null) {
+            throw new IllegalArgumentException("episode not found");
+        }
+
+        assertEpisodeAccessible(episode, userId, adminId);
+
+        String cloudflareUid = episode.getCloudflareUid();
+        if (cloudflareUid == null || cloudflareUid.isBlank()) {
+            throw new IllegalArgumentException("episode is not a cloudflare stream video");
+        }
+        if (!cloudflareStreamService.isEnabled()) {
+            throw new IllegalStateException("cloudflare stream not enabled");
+        }
+
+        String signedUrl = cloudflareStreamService.generateSignedUrl(cloudflareUid);
+        Map<String, Object> result = MapUtil.map(
+                "episodeId", episodeId,
+                "uid", cloudflareUid,
+                "signed_url", signedUrl,
+                "hls_url", cloudflareStreamService.getHlsUrl(cloudflareUid)
+        );
+        return R.ok(result);
+    }
+
+    /**
      * 创建 Cloudflare Stream 上传资源 (仅获取 uploadURL,由客户端自行 PUT)。
      * 适用于大文件场景 (> 200MB)。
      */

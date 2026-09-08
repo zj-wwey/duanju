@@ -14,13 +14,15 @@ public record EpisodeRequest(
         String description,
         String coverUrl,
         String videoUrl,
+        String cloudflareUid,
         Integer pricePoints,
         Integer durationSeconds,
         Boolean isFree,
         String accessType,
         Integer sortOrder,
         String storageProvider,
-        Integer status
+        Integer status,
+        String coverObjectKey
 ) {
     public Map<String, Object> toMap(Long id) {
         String normalizedAccessType = DramaService.normalizeAccessType(accessType, isFree);
@@ -28,12 +30,14 @@ public record EpisodeRequest(
         return MapUtil.map(
                 "id", id, "dramaId", dramaId, "episodeNo", episodeNo, "title", title,
                 "description", description, "coverUrl", coverUrl, "videoUrl", videoUrl,
+                "cloudflareUid", cloudflareUid,
                 "pricePoints", free ? 0 : (pricePoints == null ? 10 : pricePoints),
                 "durationSeconds", durationSeconds == null ? 0 : durationSeconds,
                 "isFree", free ? 1 : 0, "accessType", normalizedAccessType,
                 "sortOrder", sortOrder == null ? episodeNo : sortOrder,
                 "storageProvider", storageProvider == null ? "oss" : storageProvider,
-                "status", status == null ? 1 : status
+                "status", status == null ? 1 : status,
+                "coverObjectKey", coverObjectKey
         );
     }
 }

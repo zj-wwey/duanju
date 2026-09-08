@@ -77,6 +77,7 @@
           <el-menu-item v-if="menuVisibility.drama" index="drama">{{ t('dramaLibrary') }}</el-menu-item>
           <el-menu-item v-if="menuVisibility.episode" index="episode">{{ t('episodeManagement') }}</el-menu-item>
           <el-menu-item v-if="menuVisibility.category" index="category">{{ t('categoryConfig') }}</el-menu-item>
+          <el-menu-item v-if="menuVisibility.comment" index="comment">{{ t('commentManagement') }}</el-menu-item>
         </el-sub-menu>
         <el-menu-item v-if="menuVisibility.recommendations" index="recommendations">{{ t('recommendationsManagement') }}</el-menu-item>
         <el-sub-menu v-if="menuVisibility.userOperations" index="userOperations">
@@ -127,6 +128,7 @@
       <AdminPointRecordPage v-else-if="view === 'pointRecords'" :admin-t="adminT" :field="field" :format-number="formatNumber" :format-date-time="formatDateTime" />
       <AdminAutoRenewalPage v-else-if="view === 'autoRenewal'" :admin-t="adminT" :field="field" :format-date-time="formatDateTime" />
       <AdminMembershipStats v-else-if="view === 'membershipStats'" :admin-t="adminT" :field="field" :format-number="formatNumber" />
+      <AdminCommentPage v-else-if="view === 'comment'" :admin-t="adminT" :field="field" :format-date-time="formatDateTime" />
       <template v-else>
       <header class="page-head">
         <div>
@@ -374,6 +376,43 @@
             </div>
 
             <div class="episode-long-list">
+              <div v-if="pendingEpisodes.length" class="episode-list-body">
+                <article v-for="pe in pendingEpisodes" :key="pe._id" class="episode-list-row episode-pending-row">
+                  <div class="episode-index-block">
+                    <span>{{ t('episodeNo') }}</span>
+                    <strong>{{ pe.episodeNo }}</strong>
+                  </div>
+                  <div class="episode-pending-info">
+                    <div class="pending-info-block">
+                      <strong>{{ pe.title }}</strong>
+                      <span v-if="pe.dramaName" class="pending-drama-name">{{ pe.dramaName }}</span>
+                      <div class="pending-file-info">
+                        <span v-if="pe.fileName" class="pending-file-name" :title="pe.fileName">{{ pe.fileName }}</span>
+                        <span v-if="pe.fileSize" class="pending-file-size">{{ formatFileSize(pe.fileSize) }}</span>
+                        <span v-if="pe.durationSeconds">{{ t('duration') }} {{ pe.durationSeconds }}s</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="episode-pending-progress">
+                    <el-progress
+                      :percentage="pe.progress || 0"
+                      :stroke-width="10"
+                      :show-text="true"
+                      :status="pe._status === 'fail' ? 'exception' : (pe._status === 'success' ? 'success' : '')"
+                    />
+                    <div class="pending-progress-actions">
+                      <span class="upload-speed" v-if="pe._status === 'uploading'">{{ formatSpeed(pe.speed) }}</span>
+                      <span v-if="pe._status === 'creating'" class="pending-creating-text">正在保存到数据库...</span>
+                      <span v-if="pe._status === 'fail'" class="pending-fail-text">{{ pe.errorReason || '上传失败' }}</span>
+                      <div class="pending-action-buttons">
+                        <el-button v-if="pe._status === 'uploading'" size="small" text type="danger" @click="pe._controller?.abort(); pe._status = 'fail'; pe.errorReason = '已取消'">取消</el-button>
+                        <el-button v-if="pe._status === 'fail'" size="small" type="warning" plain @click="retryPendingEpisode(pe)">重新上传</el-button>
+                        <el-button v-if="pe._status === 'fail'" size="small" text type="danger" @click="removePendingEpisode(pe)">移除</el-button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
               <div v-if="episodes.length" class="episode-list-body">
                 <article v-for="row in pagedEpisodeList" :key="row.id" class="episode-list-row">
                   <div class="episode-index-block">
@@ -402,16 +441,20 @@
                   </div>
                   <div class="episode-row-side">
                     <span class="biz-tag" :class="Number(field(row, 'status')) === 1 ? 'tag-online' : 'tag-offline'">{{ statusLabel(field(row, 'status')) }}</span>
+                    <span v-if="transcodeTagMap[row.id]" class="biz-tag" :class="transcodeTagMap[row.id].cls">{{ transcodeTagMap[row.id].text }}</span>
                     <div class="row-actions episode-actions">
+                      <el-button size="small" @click="openVideoPreview(row)">预览</el-button>
                       <el-button size="small" @click="editEpisode(row)">{{ t('edit') }}</el-button>
                       <el-button size="small" @click="adjustEpisodePrice(row)">{{ t('adjustPrice') }}</el-button>
                       <el-button size="small" @click="openEpisodeAnalysis(row)">{{ t('viewAnalysis') }}</el-button>
+                      <el-button v-if="transcodeTagMap[row.id]?.status === -1" size="small" type="warning" @click="retryTranscode(row)">重转码</el-button>
                       <el-button size="small" :type="Number(field(row, 'status')) === 1 ? 'warning' : 'success'" @click="toggleEpisodeStatus(row)">{{ Number(field(row, 'status')) === 1 ? t('takeOffline') : t('putOnline') }}</el-button>
+                      <el-button size="small" type="danger" @click="removeEpisode(row)">{{ t('delete') }}</el-button>
                     </div>
                   </div>
                 </article>
               </div>
-              <div v-else class="ops-empty">
+              <div v-else-if="!pendingEpisodes.length" class="ops-empty">
                 <strong>{{ t('noEpisodeData') }}</strong>
                 <span>{{ t('noEpisodeDataHint') }}</span>
               </div>
@@ -1212,26 +1255,41 @@
         <el-form-item :label="t('coverUrl')">
           <div class="upload-row">
             <el-input v-model="dramaForm.coverUrl" />
-            <el-upload :show-file-list="false" accept="image/*" :http-request="options => uploadLocal(options, dramaForm, 'coverUrl', 'image')">
-              <el-button>{{ t('localUpload') }}</el-button>
+            <el-upload :show-file-list="false" accept="image/*" :http-request="options => uploadLocal(options, dramaForm, 'coverUrl', 'image', 'drama-coverUrl')">
+              <el-button :loading="getUploadProgress('drama-coverUrl').uploading">
+              {{ getUploadProgress('drama-coverUrl').uploading ? `${getUploadProgress('drama-coverUrl').percent}%` : t('localUpload') }}
+            </el-button>
             </el-upload>
+            <el-button v-if="getUploadProgress('drama-coverUrl').uploading" size="small" text type="danger" @click="cancelUpload('drama-coverUrl')">取消</el-button>
+            <span v-if="getUploadProgress('drama-coverUrl').uploading" class="upload-speed">{{ formatSpeed(getUploadProgress('drama-coverUrl').speed) }}</span>
           </div>
+          <el-progress v-if="getUploadProgress('drama-coverUrl').uploading" :percentage="getUploadProgress('drama-coverUrl').percent" :stroke-width="3" :show-text="false" style="margin-top: 4px" />
         </el-form-item>
         <el-form-item :label="t('verticalCover')">
           <div class="upload-row">
             <el-input v-model="dramaForm.verticalCoverUrl" />
-            <el-upload :show-file-list="false" accept="image/*" :http-request="options => uploadLocal(options, dramaForm, 'verticalCoverUrl', 'image')">
-              <el-button>{{ t('localUpload') }}</el-button>
+            <el-upload :show-file-list="false" accept="image/*" :http-request="options => uploadLocal(options, dramaForm, 'verticalCoverUrl', 'image', 'drama-verticalCoverUrl')">
+              <el-button :loading="getUploadProgress('drama-verticalCoverUrl').uploading">
+                {{ getUploadProgress('drama-verticalCoverUrl').uploading ? `${getUploadProgress('drama-verticalCoverUrl').percent}%` : t('localUpload') }}
+              </el-button>
             </el-upload>
+            <el-button v-if="getUploadProgress('drama-verticalCoverUrl').uploading" size="small" text type="danger" @click="cancelUpload('drama-verticalCoverUrl')">取消</el-button>
+            <span v-if="getUploadProgress('drama-verticalCoverUrl').uploading" class="upload-speed">{{ formatSpeed(getUploadProgress('drama-verticalCoverUrl').speed) }}</span>
           </div>
+          <el-progress v-if="getUploadProgress('drama-verticalCoverUrl').uploading" :percentage="getUploadProgress('drama-verticalCoverUrl').percent" :stroke-width="3" :show-text="false" style="margin-top: 4px" />
         </el-form-item>
         <el-form-item :label="t('horizontalCover')">
           <div class="upload-row">
             <el-input v-model="dramaForm.horizontalCoverUrl" />
-            <el-upload :show-file-list="false" accept="image/*" :http-request="options => uploadLocal(options, dramaForm, 'horizontalCoverUrl', 'image')">
-              <el-button>{{ t('localUpload') }}</el-button>
+            <el-upload :show-file-list="false" accept="image/*" :http-request="options => uploadLocal(options, dramaForm, 'horizontalCoverUrl', 'image', 'drama-horizontalCoverUrl')">
+              <el-button :loading="getUploadProgress('drama-horizontalCoverUrl').uploading">
+                {{ getUploadProgress('drama-horizontalCoverUrl').uploading ? `${getUploadProgress('drama-horizontalCoverUrl').percent}%` : t('localUpload') }}
+              </el-button>
             </el-upload>
+            <el-button v-if="getUploadProgress('drama-horizontalCoverUrl').uploading" size="small" text type="danger" @click="cancelUpload('drama-horizontalCoverUrl')">取消</el-button>
+            <span v-if="getUploadProgress('drama-horizontalCoverUrl').uploading" class="upload-speed">{{ formatSpeed(getUploadProgress('drama-horizontalCoverUrl').speed) }}</span>
           </div>
+          <el-progress v-if="getUploadProgress('drama-horizontalCoverUrl').uploading" :percentage="getUploadProgress('drama-horizontalCoverUrl').percent" :stroke-width="3" :show-text="false" style="margin-top: 4px" />
         </el-form-item>
         <el-form-item :label="t('onlineTime')">
           <el-date-picker v-model="dramaForm.onlineTime" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" />
@@ -1262,21 +1320,44 @@
       <el-form-item :label="t('coverUrl')">
         <div class="upload-row">
           <el-input v-model="episodeForm.coverUrl" />
-          <el-upload :show-file-list="false" accept="image/*" :http-request="options => uploadLocal(options, episodeForm, 'coverUrl', 'image')">
-            <el-button>{{ t('localUpload') }}</el-button>
+          <el-upload :show-file-list="false" accept="image/*" :http-request="options => uploadLocal(options, episodeForm, 'coverUrl', 'image', 'episode-coverUrl')">
+            <el-button :loading="getUploadProgress('episode-coverUrl').uploading">
+              {{ getUploadProgress('episode-coverUrl').uploading ? `${getUploadProgress('episode-coverUrl').percent}%` : t('localUpload') }}
+            </el-button>
           </el-upload>
+          <el-button v-if="getUploadProgress('episode-coverUrl').uploading" size="small" text type="danger" @click="cancelUpload('episode-coverUrl')">取消</el-button>
+          <span v-if="getUploadProgress('episode-coverUrl').uploading" class="upload-speed">{{ formatSpeed(getUploadProgress('episode-coverUrl').speed) }}</span>
         </div>
+        <el-progress v-if="getUploadProgress('episode-coverUrl').uploading" :percentage="getUploadProgress('episode-coverUrl').percent" :stroke-width="3" :show-text="false" style="margin-top: 4px" />
       </el-form-item>
       <el-form-item :label="t('videoUrl')" required>
         <div class="upload-row">
-          <el-input v-model="episodeForm.videoUrl" />
-          <el-upload :show-file-list="false" accept="video/*,.m3u8" :http-request="options => uploadLocal(options, episodeForm, 'videoUrl', 'video')">
-            <el-button type="primary">{{ t('localUpload') }}</el-button>
+          <el-input
+            v-model="episodeForm.videoUrl"
+            :placeholder="episodeForm.storageProvider === 'cloudflare' ? t('cloudflareUidPlaceholder') : ''"
+          />
+          <el-upload :show-file-list="false" accept="video/*,.m3u8" :http-request="options => uploadLocal(options, episodeForm, 'videoUrl', 'video', 'episode-videoUrl')">
+            <el-button type="primary" :loading="getUploadProgress('episode-videoUrl').uploading">
+              {{ getUploadProgress('episode-videoUrl').uploading ? `${getUploadProgress('episode-videoUrl').percent}%` : (episodeForm.storageProvider === 'cloudflare' ? t('uploadToCloudflare') : t('localUpload')) }}
+            </el-button>
           </el-upload>
+          <el-button v-if="getUploadProgress('episode-videoUrl').uploading" size="small" text type="danger" @click="cancelUpload('episode-videoUrl')">取消</el-button>
+          <span v-if="getUploadProgress('episode-videoUrl').uploading" class="upload-speed">{{ formatSpeed(getUploadProgress('episode-videoUrl').speed) }}</span>
+        </div>
+        <el-progress
+          v-if="getUploadProgress('episode-videoUrl').uploading || getUploadProgress('episode-videoUrl').error"
+          :percentage="getUploadProgress('episode-videoUrl').percent"
+          :stroke-width="10"
+          :show-text="true"
+          :status="getUploadProgress('episode-videoUrl').error ? 'exception' : 'success'"
+          style="margin-top: 6px"
+        />
+        <div v-if="getUploadProgress('episode-videoUrl').error" style="color: #f56c6c; font-size: 12px; margin-top: 4px">
+          {{ getUploadProgress('episode-videoUrl').error }}
         </div>
       </el-form-item>
       <div class="form-grid two">
-        <el-form-item :label="t('storage')"><el-segmented v-model="episodeForm.storageProvider" :options="['local', 'oss', 'cos']" /></el-form-item>
+        <el-form-item :label="t('storage')"><el-segmented v-model="episodeForm.storageProvider" :options="['local', 'oss', 'cos', 'cloudflare']" /></el-form-item>
         <el-form-item :label="t('accessType')"><el-segmented v-model="episodeForm.accessType" :options="accessTypeOptions" /></el-form-item>
         <el-form-item :label="t('credits')"><el-input-number v-model="episodeForm.pricePoints" :min="0" :precision="0" :step="1" /></el-form-item>
         <el-form-item :label="t('sort')"><el-input-number v-model="episodeForm.sortOrder" :min="0" :precision="0" :step="1" /></el-form-item>
@@ -1286,54 +1367,138 @@
     <template #footer><el-button type="primary" @click="saveEpisode">{{ t('save') }}</el-button></template>
   </el-dialog>
 
-  <el-dialog v-model="batchDialog" :title="t('batchUploadEpisodes')" width="720px">
+  <el-dialog v-model="batchDialog" :title="t('batchUploadEpisodes')" width="780px">
     <div class="batch-upload-section">
       <div class="batch-upload-info">
         <span>{{ t('dramaName') }}：<strong>{{ selectedDrama?.title || '-' }}</strong></span>
-        <span>{{ t('startEpisodeNo') }}：<el-input-number v-model="batchForm.startEpisodeNo" :min="1" :precision="0" :step="1" size="small" style="width: 120px" /></span>
+        <span>{{ t('startEpisodeNo') }}：<el-input-number v-model="batchForm.startEpisodeNo" :min="1" :precision="0" :step="1" size="small" style="width: 120px" :disabled="vpsTask.running" /></span>
       </div>
-      <el-upload
-        ref="batchUploadRef"
-        :show-file-list="true"
-        :auto-upload="false"
-        multiple
-        accept="video/*,.m3u8"
-        :on-change="handleBatchFileChange"
-        :on-remove="handleBatchFileRemove"
-        :file-list="batchFileList"
-        drag
-      >
-        <el-icon size="40" color="#d4af68"><UploadFilled /></el-icon>
-        <div style="margin-top: 8px; color: #d4af68; font-weight: 600">{{ t('clickOrDrag') }}</div>
-        <div style="color: #999; font-size: 12px; margin-top: 4px">{{ t('batchUploadHint') }}</div>
-      </el-upload>
-      <div v-if="batchForm.episodes.length" class="batch-episode-list">
-        <div class="batch-list-header">
-          <span>{{ t('selectedEpisodes') }} ({{ batchForm.episodes.length }})</span>
-          <el-button size="small" text @click="clearBatchList">{{ t('clearAll') }}</el-button>
-        </div>
-        <div class="batch-episode-items">
-          <div
-            v-for="(ep, idx) in batchForm.episodes"
-            :key="idx"
-            class="batch-episode-row"
+
+      <el-tabs v-model="batchMode" class="batch-tabs">
+        <el-tab-pane :label="t('localUpload')" name="local">
+          <el-upload
+            ref="batchUploadRef"
+            :show-file-list="true"
+            :auto-upload="false"
+            multiple
+            accept="video/*,.m3u8"
+            :on-change="handleBatchFileChange"
+            :on-remove="handleBatchFileRemove"
+            :file-list="batchFileList"
+            drag
           >
-            <span class="batch-episode-no">{{ ep.episodeNo }}</span>
-            <el-input v-model="ep.title" :placeholder="t('episodeTitle')" size="small" style="flex: 1" />
-            <el-input-number v-model="ep.pricePoints" :min="0" :precision="0" :step="1" size="small" style="width: 100px" />
-            <el-select v-model="ep.accessType" size="small" style="width: 100px">
-              <el-option :label="t('paidEpisode')" value="POINTS" />
-              <el-option :label="t('freePreview')" value="FREE" />
-            </el-select>
-            <el-button size="small" text type="danger" @click="removeBatchEpisode(idx)">{{ t('delete') }}</el-button>
+            <el-icon size="40" color="#d4af68"><UploadFilled /></el-icon>
+            <div style="margin-top: 8px; color: #d4af68; font-weight: 600">{{ t('clickOrDrag') }}</div>
+            <div style="color: #999; font-size: 12px; margin-top: 4px">{{ t('batchUploadHint') }}</div>
+          </el-upload>
+          <div v-if="batchForm.episodes.length" class="batch-episode-list">
+            <div class="batch-list-header">
+              <span>{{ t('selectedEpisodes') }} ({{ batchForm.episodes.length }})</span>
+              <div>
+                <el-button v-if="batchForm.episodes.some(e => e.uploadStatus === 'fail')" size="small" type="warning" plain @click="retryAllFailed" :loading="batchUploading">
+                  {{ t('retryAllFailed') }}
+                </el-button>
+                <el-button size="small" text @click="clearBatchList">{{ t('clearAll') }}</el-button>
+              </div>
+            </div>
+            <div class="batch-episode-items">
+              <div
+                v-for="(ep, idx) in batchForm.episodes"
+                :key="idx"
+                class="batch-episode-row"
+                style="flex-wrap: wrap; align-items: center"
+              >
+                <span class="batch-episode-no">{{ ep.episodeNo }}</span>
+                <el-input v-model="ep.title" :placeholder="t('episodeTitle')" size="small" style="flex: 1" />
+                <el-input-number v-model="ep.pricePoints" :min="0" :precision="0" :step="1" size="small" style="width: 100px" />
+                <el-select v-model="ep.accessType" size="small" style="width: 100px">
+                  <el-option :label="t('paidEpisode')" value="POINTS" />
+                  <el-option :label="t('freePreview')" value="FREE" />
+                </el-select>
+                <el-button size="small" text type="danger" @click="removeBatchEpisode(idx)">{{ t('delete') }}</el-button>
+                <el-tag
+                  v-if="ep.uploadStatus && ep.uploadStatus !== 'pending'"
+                  size="small"
+                  :type="batchEpisodeTagType(ep.uploadStatus)"
+                  style="width: 70px; text-align: center"
+                >
+                  {{ batchEpisodeStatusLabel(ep.uploadStatus) }}
+                </el-tag>
+                <el-progress
+                  v-if="ep.uploadStatus === 'uploading' || ep.uploadStatus === 'success' || ep.uploadStatus === 'fail'"
+                  :percentage="ep.progress || 0"
+                  :stroke-width="8"
+                  :show-text="true"
+                  :status="ep.uploadStatus === 'fail' ? 'exception' : (ep.uploadStatus === 'success' ? 'success' : '')"
+                  style="flex-basis: 100%; margin-top: 4px"
+                />
+                <div v-if="ep.uploadStatus === 'uploading'" style="flex-basis: 100%; display: flex; align-items: center; gap: 8px; margin-top: 2px">
+                  <span class="upload-speed">{{ formatSpeed(ep.speed) }}</span>
+                </div>
+                <div v-if="ep.uploadStatus === 'uploading'" style="flex-basis: 100%; margin-top: 4px">
+                  <el-button size="small" text type="danger" @click="ep._controller?.abort(); ep.uploadStatus = 'fail'; ep.errorReason = '已取消'">取消上传</el-button>
+                </div>
+                <div v-if="ep.errorReason" style="flex-basis: 100%; color: #f56c6c; font-size: 12px; margin-top: 2px">
+                  {{ ep.errorReason }}
+                </div>
+                <div v-if="ep.uploadStatus === 'fail'" style="flex-basis: 100%; margin-top: 4px">
+                  <el-button size="small" type="warning" plain @click="retryBatchEpisode(idx)" :loading="ep.uploadStatus === 'uploading'">
+                    {{ t('retryUpload') }}
+                  </el-button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </el-tab-pane>
+
+        <el-tab-pane :label="t('vpsTransferMode')" name="vps">
+          <el-alert :title="t('vpsTransferHint')" type="info" :closable="false" show-icon style="margin-bottom: 12px" />
+          <div style="margin-bottom: 12px">
+            <el-button type="primary" plain :loading="vpsScanning" :disabled="vpsTask.running" @click="scanVpsFiles">
+              {{ t('scanFiles') }}
+            </el-button>
+            <span style="margin-left: 12px; color: #999; font-size: 12px">{{ t('scanHint') }}</span>
+          </div>
+
+          <div v-if="!vpsFiles.length && !vpsScanning" style="color: #999; padding: 24px; text-align: center">
+            {{ t('noFilesScanned') }}
+          </div>
+
+          <div v-if="vpsFiles.length" class="batch-episode-list">
+            <div class="batch-list-header">
+              <span>{{ t('selectedEpisodes') }} ({{ vpsFiles.length }})</span>
+              <span v-if="vpsTask.running || vpsTask.status === 'done' || vpsTask.status === 'error'" style="margin-left: 16px; font-size: 12px">
+                {{ t('processed') }}: {{ vpsTask.processed }}/{{ vpsTask.total }}
+                <el-tag size="small" :type="vpsTaskTagType" style="margin-left: 8px">{{ vpsTaskStatusLabel }}</el-tag>
+              </span>
+            </div>
+            <el-progress
+              v-if="vpsTask.running || vpsTask.status === 'done' || vpsTask.status === 'error'"
+              :percentage="vpsTaskPercentage"
+              :status="vpsTaskProgressStatus"
+              style="margin: 8px 0"
+            />
+            <div class="batch-episode-items">
+              <div v-for="f in vpsFiles" :key="f.path" class="batch-episode-row">
+                <span class="batch-episode-no">{{ f.sortOrder }}</span>
+                <span style="flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ f.fileName }}</span>
+                <span style="width: 90px; text-align: right; color: #999; font-size: 12px">{{ formatBytes(f.sizeBytes) }}</span>
+                <el-tag size="small" :type="vpsFileTagType(f.status)" style="width: 70px; text-align: center">
+                  {{ t('fileStatus.' + f.status) || f.status }}
+                </el-tag>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </div>
     <template #footer>
       <el-button @click="batchDialog = false">{{ t('cancel') }}</el-button>
-      <el-button type="primary" :disabled="!batchForm.episodes.length || batchUploading" @click="submitBatchUpload">
+      <el-button v-if="batchMode === 'local'" type="primary" :disabled="!batchForm.episodes.length || batchUploading" @click="submitBatchUpload">
         {{ batchUploading ? t('uploading') : t('confirmUpload') }}
+      </el-button>
+      <el-button v-else type="primary" :disabled="!vpsFiles.length || vpsTask.running" @click="startVpsUpload">
+        {{ vpsTask.running ? t('batchUploadRunning') : t('startBatchUpload') }}
       </el-button>
     </template>
   </el-dialog>
@@ -1371,7 +1536,12 @@
         <el-input v-model.trim="userForm.nickname" />
       </el-form-item>
       <el-form-item :label="t('avatarUrl')">
-        <el-input v-model.trim="userForm.avatarUrl" />
+        <div class="upload-row">
+          <el-input v-model.trim="userForm.avatarUrl" />
+          <el-upload :show-file-list="false" accept="image/*" :http-request="options => uploadUserAvatar(options)">
+            <el-button :loading="uploadingUserAvatar">{{ t('localUpload') }}</el-button>
+          </el-upload>
+        </div>
       </el-form-item>
       <el-form-item v-if="!userForm.id" :label="t('points')">
         <el-input-number v-model="userForm.points" :min="0" :precision="0" />
@@ -1545,14 +1715,41 @@
       <el-button type="primary" @click="submitEditAdmin">{{ t('save') }}</el-button>
     </template>
   </el-dialog>
+
+  <!-- 视频预览弹窗 (HLS优先,回退到原始MP4) -->
+  <el-dialog v-model="videoPreview.visible" title="视频预览" width="800px" @close="closeVideoPreview" destroy-on-close>
+    <div v-if="videoPreview.loading" style="text-align: center; padding: 40px 0;">
+      <el-icon class="is-loading" :size="32"><Loading /></el-icon>
+      <p style="margin-top: 12px;">加载视频中...</p>
+    </div>
+    <div v-else-if="videoPreview.error" style="text-align: center; padding: 40px 0;">
+      <p style="color: #f56c6c;">{{ videoPreview.error }}</p>
+      <el-button v-if="videoPreview.canRetry" type="warning" size="small" @click="retryTranscode(videoPreview.row)" style="margin-top: 12px;">重新转码</el-button>
+    </div>
+    <video
+      v-else
+      ref="videoPreviewRef"
+      :key="videoPreview.src"
+      controls
+      autoplay
+      style="width: 100%; max-height: 480px; background: #000;"
+      :src="videoPreview.isHls ? undefined : videoPreview.src"
+    />
+    <div v-if="!videoPreview.loading && !videoPreview.error" style="margin-top: 12px; font-size: 12px; color: #909399;">
+      <span>{{ videoPreview.isHls ? 'HLS 流播放 (m3u8)' : '原始视频播放 (mp4)' }}</span>
+      <span v-if="videoPreview.transcodeStatus === 1" style="margin-left: 12px; color: #e6a23c;">转码中...</span>
+      <span v-else-if="videoPreview.transcodeStatus === 0" style="margin-left: 12px; color: #909399;">未转码</span>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { UploadFilled, User, SwitchButton } from '@element-plus/icons-vue'
+import { UploadFilled, User, SwitchButton, Loading } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import Hls from 'hls.js'
 import { api } from './api.js'
 import { messages, normalizeLocale, adminI18n } from './i18n.js'
 import { applyLocaleSideEffects, streamI18n, loadStreamLocaleMessages } from './locales/streamI18n.js'
@@ -1576,6 +1773,7 @@ import AdminShopPage from './pages/AdminShopPage.vue'
 import AdminPointRecordPage from './pages/AdminPointRecordPage.vue'
 import AdminAutoRenewalPage from './pages/AdminAutoRenewalPage.vue'
 import AdminMembershipStats from './pages/AdminMembershipStats.vue'
+import AdminCommentPage from './pages/AdminCommentPage.vue'
 
 for (const key of ['adminToken', 'adminRefreshToken', 'userToken', 'userRefreshToken', 'user']) {
   localStorage.removeItem(key)
@@ -1682,11 +1880,35 @@ const batchDialog = ref(false)
 const batchUploadRef = ref(null)
 const batchUploading = ref(false)
 const batchFileList = ref([])
+const uploadingUserAvatar = ref(false)
+const uploadProgress = reactive({})
+const uploadControllers = reactive({})
+const pendingEpisodes = reactive([])
+function getUploadProgress(key) {
+  return uploadProgress[key] || { uploading: false, percent: 0, error: null, speed: 0 }
+}
+function setUploadProgress(key, patch) {
+  uploadProgress[key] = { ...getUploadProgress(key), ...patch }
+}
 const batchForm = reactive({
   startEpisodeNo: 1,
   episodes: [],
   files: []
 })
+const batchMode = ref('local')
+const vpsScanning = ref(false)
+const vpsFiles = ref([])
+const vpsTask = reactive({
+  running: false,
+  status: 'none',
+  total: 0,
+  processed: 0,
+  success: 0,
+  fail: 0,
+  elapsedMillis: 0,
+  files: []
+})
+let vpsPollingTimer = null
 const pointsDialog = ref(false)
 const roleDialog = ref(false)
 const createAdminDialog = ref(false)
@@ -1694,8 +1916,24 @@ const createAdminForm = reactive({ username: '', password: '', nickname: '' })
 const editAdminDialog = ref(false)
 const editAdminForm = reactive({ id: null, username: '', nickname: '', password: '' })
 const categoryForm = reactive({})
-const dramaForm = reactive({})
-const episodeForm = reactive({})
+// 表单初始字段仅作声明,实际值由 copyTo(newDramaDraft()/normalize(row)) 填充;
+// coverObjectKey 等字段透传给后端,删短剧时用于级联删 R2 对象
+const dramaForm = reactive({ coverObjectKey: '', horizontalCoverObjectKey: '', verticalCoverObjectKey: '' })
+const episodeForm = reactive({ coverObjectKey: '' })
+const videoPreviewRef = ref(null)
+const videoPreview = reactive({
+  visible: false,
+  loading: false,
+  error: null,
+  canRetry: false,
+  src: '',
+  isHls: false,
+  transcodeStatus: 0,
+  row: null
+})
+let videoPreviewHls = null
+const transcodeStatusMap = reactive({})
+let transcodePollTimer = null
 const pointsForm = reactive({ delta: 100, remark: '' })
 const roleForm = reactive({})
 const roleFormRef = ref(null)
@@ -1932,6 +2170,7 @@ const viewPermissionMap = {
   drama: 'content:manage',
   episode: 'content:manage',
   category: 'content:manage',
+  comment: 'content:manage',
   recommendations: 'content:manage',
   users: 'user:manage',
   feedback: 'user:manage',
@@ -1960,10 +2199,11 @@ const menuVisibility = computed(() => {
   }
   return {
     dashboard: check('dashboard'),
-    contentManagement: check('drama') || check('episode') || check('category'),
+    contentManagement: check('drama') || check('episode') || check('category') || check('comment'),
     drama: check('drama'),
     episode: check('episode'),
     category: check('category'),
+    comment: check('comment'),
     recommendations: check('recommendations'),
     userOperations: check('users') || check('feedback') || check('membership'),
     users: check('users'),
@@ -2282,6 +2522,11 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('duanju:auth-expired', handleExpiredAuth)
   window.removeEventListener('resize', handleChartResize)
+  stopTranscodePolling()
+  if (videoPreviewHls) {
+    videoPreviewHls.destroy()
+    videoPreviewHls = null
+  }
   trendChartInstance?.dispose()
   dramaChartInstance?.dispose()
   viewerActivityChartInstance?.dispose()
@@ -2962,11 +3207,165 @@ function getPermTagType(code) {
 }
 
 function openBatchUpload() {
+  if (batchUploading.value) {
+    batchDialog.value = true
+    return
+  }
   batchForm.startEpisodeNo = (selectedDramaEpisodes.value || 0) + 1
   batchForm.episodes = []
   batchForm.files = []
   batchFileList.value = []
+  batchMode.value = 'local'
+  vpsFiles.value = []
+  vpsScanning.value = false
+  resetVpsTask()
+  stopVpsPolling()
   batchDialog.value = true
+}
+
+function resetVpsTask() {
+  vpsTask.running = false
+  vpsTask.status = 'none'
+  vpsTask.total = 0
+  vpsTask.processed = 0
+  vpsTask.success = 0
+  vpsTask.fail = 0
+  vpsTask.elapsedMillis = 0
+  vpsTask.files = []
+}
+
+function stopVpsPolling() {
+  if (vpsPollingTimer) {
+    clearInterval(vpsPollingTimer)
+    vpsPollingTimer = null
+  }
+}
+
+async function scanVpsFiles() {
+  if (!selectedDrama.value) {
+    ElMessage.warning(t('selectDramaFirst'))
+    return
+  }
+  vpsScanning.value = true
+  resetVpsTask()
+  try {
+    const data = await api.scanBatchUpload(selectedDrama.value.id)
+    vpsFiles.value = data || []
+    if (!vpsFiles.value.length) {
+      ElMessage.info(t('noFilesScanned'))
+    } else {
+      ElMessage.success(`${vpsFiles.value.length} ${t('selectedEpisodes')}`)
+    }
+  } catch (err) {
+    ElMessage.error(err.message || t('scanFiles'))
+  } finally {
+    vpsScanning.value = false
+  }
+}
+
+async function startVpsUpload() {
+  if (!selectedDrama.value) {
+    ElMessage.warning(t('selectDramaFirst'))
+    return
+  }
+  if (!vpsFiles.value.length) {
+    ElMessage.warning(t('noFilesScanned'))
+    return
+  }
+  vpsTask.running = true
+  vpsTask.status = 'running'
+  vpsTask.total = vpsFiles.value.length
+  vpsTask.processed = 0
+  vpsTask.success = 0
+  vpsTask.fail = 0
+  vpsTask.files = vpsFiles.value.map(f => ({ ...f, status: 'pending', episodeNo: null, error: null }))
+
+  try {
+    await api.startBatchUpload(selectedDrama.value.id, batchForm.startEpisodeNo)
+    ElMessage.success(t('batchUploadRunning'))
+    startVpsPolling()
+  } catch (err) {
+    vpsTask.running = false
+    vpsTask.status = 'error'
+    ElMessage.error(err.message || t('batchCreateFailed'))
+  }
+}
+
+function startVpsPolling() {
+  stopVpsPolling()
+  vpsPollingTimer = setInterval(async () => {
+    try {
+      const data = await api.batchUploadStatus(selectedDrama.value.id)
+      if (!data || data.status === 'none') return
+      vpsTask.status = data.status
+      vpsTask.total = data.totalFiles || 0
+      vpsTask.processed = data.processed || 0
+      vpsTask.success = data.success || 0
+      vpsTask.fail = data.fail || 0
+      vpsTask.elapsedMillis = data.elapsedMillis || 0
+      vpsTask.files = data.files || []
+      if (data.status === 'done' || data.status === 'error') {
+        vpsTask.running = false
+        stopVpsPolling()
+        if (data.status === 'done' && data.fail === 0) {
+          ElMessage.success(t('batchUploadDone'))
+        } else if (data.fail > 0) {
+          ElMessage.warning(`${t('batchUploadFailed')} ${data.fail}/${data.totalFiles}`)
+        }
+        await loadEpisodes()
+      }
+    } catch (err) {
+      console.error('poll batch upload status failed', err)
+    }
+  }, 3000)
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  let val = bytes
+  while (val >= 1024 && i < units.length - 1) {
+    val /= 1024
+    i++
+  }
+  return val.toFixed(i === 0 ? 0 : 1) + ' ' + units[i]
+}
+
+const vpsTaskPercentage = computed(() => {
+  if (!vpsTask.total) return 0
+  return Math.round((vpsTask.processed / vpsTask.total) * 100)
+})
+
+const vpsTaskProgressStatus = computed(() => {
+  if (vpsTask.status === 'error') return 'exception'
+  if (vpsTask.status === 'done' && vpsTask.fail > 0) return 'warning'
+  if (vpsTask.status === 'done') return 'success'
+  return ''
+})
+
+const vpsTaskTagType = computed(() => {
+  if (vpsTask.status === 'running') return 'primary'
+  if (vpsTask.status === 'done' && vpsTask.fail > 0) return 'warning'
+  if (vpsTask.status === 'done') return 'success'
+  if (vpsTask.status === 'error') return 'danger'
+  return 'info'
+})
+
+const vpsTaskStatusLabel = computed(() => {
+  if (vpsTask.status === 'running') return t('batchUploadRunning')
+  if (vpsTask.status === 'done' && vpsTask.fail > 0) return t('batchUploadFailed')
+  if (vpsTask.status === 'done') return t('batchUploadDone')
+  if (vpsTask.status === 'error') return t('batchUploadFailed')
+  return ''
+})
+
+function vpsFileTagType(status) {
+  if (status === 'success') return 'success'
+  if (status === 'fail') return 'danger'
+  if (status === 'uploading') return 'primary'
+  if (status === 'skipped') return 'info'
+  return 'info'
 }
 
 function handleBatchFileChange(file) {
@@ -2975,7 +3374,7 @@ function handleBatchFileChange(file) {
     const idx = batchForm.episodes.length
     const epNo = batchForm.startEpisodeNo + idx
     const baseName = file.name.replace(/\.[^.]+$/, '')
-    batchForm.episodes.push({
+    const ep = reactive({
       file,
       name: file.name,
       episodeNo: epNo,
@@ -2983,8 +3382,24 @@ function handleBatchFileChange(file) {
       videoUrl: null,
       pricePoints: 10,
       accessType: 'POINTS',
-      uploadStatus: 'pending'
+      uploadStatus: 'pending',
+      progress: 0,
+      errorReason: null,
+      durationSeconds: null
     })
+    batchForm.episodes.push(ep)
+    const rawFile = file.raw || file
+    if (rawFile) {
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      video.onloadedmetadata = () => {
+        if (video.duration && video.duration > 0) {
+          ep.durationSeconds = Math.round(video.duration)
+        }
+        URL.revokeObjectURL(video.src)
+      }
+      video.src = URL.createObjectURL(rawFile)
+    }
   }
 }
 
@@ -3011,58 +3426,192 @@ function clearBatchList() {
   batchFileList.value = []
 }
 
+const BATCH_CONCURRENCY = 3
+
+async function uploadSingleEpisode(ep) {
+  ep.uploadStatus = 'uploading'
+  ep.progress = 0
+  ep.errorReason = null
+  ep.storageProvider = 'r2'
+  ep.cloudflareUid = null
+  ep._controller = new AbortController()
+  if (ep._pendingRef) ep._pendingRef._controller = ep._controller
+
+  let lastTime = Date.now()
+  let lastLoaded = 0
+  const onProgress = (e) => {
+    if (e.lengthComputable) {
+      ep.progress = Math.min(99, Math.round((e.loaded / e.total) * 100))
+      const now = Date.now()
+      const dt = (now - lastTime) / 1000
+      const dl = e.loaded - lastLoaded
+      ep.speed = dt > 0 ? dl / dt : 0
+      lastTime = now
+      lastLoaded = e.loaded
+      if (ep._pendingRef) {
+        ep._pendingRef.progress = ep.progress
+        ep._pendingRef.speed = ep.speed
+      }
+    }
+  }
+  const rawFile = ep.file?.raw || ep.file
+  if (!rawFile) throw new Error('无法读取文件,请重新选择后再试')
+
+  const presign = await api.presignStorage(rawFile.name, rawFile.type || 'video/mp4', 'video')
+  if (!presign || !presign.supported || !presign.presignedUrl) {
+    const supported = presign && presign.supported
+    throw new Error(supported === false
+      ? 'R2 未启用或配置不完整。请检查服务器 .env 中 R2_ENABLED=true 及 CLOUDFLARE_R2_* 相关变量。'
+      : '预签名接口返回异常,请检查后端日志。')
+  }
+  await api.putToPresignedUrl(presign.presignedUrl, rawFile, presign.headers, onProgress, ep._controller.signal)
+  ep.videoUrl = presign.url
+  ep.storageProvider = presign.storageProvider || 'r2'
+  ep.cloudflareUid = null
+  if (typeof presign.durationSeconds === 'number' && ep.durationSeconds !== undefined) {
+    ep.durationSeconds = presign.durationSeconds
+  }
+  ep.progress = 100
+  ep.uploadStatus = 'success'
+}
+
+async function uploadEpisodesConcurrently(episodes) {
+  const queue = episodes.map((_, i) => i)
+  async function worker() {
+    while (queue.length) {
+      const idx = queue.shift()
+      if (!batchForm.episodes[idx] || batchForm.episodes[idx].uploadStatus === 'success') continue
+      try {
+        await uploadSingleEpisode(batchForm.episodes[idx])
+      } catch (err) {
+        const ep = batchForm.episodes[idx]
+        if (err.message === 'UPLOAD_CANCELLED') {
+          ep.uploadStatus = 'fail'
+          ep.errorReason = '已取消'
+        } else {
+          ep.uploadStatus = 'fail'
+          ep.errorReason = resolveUploadError(err)
+        }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, episodes.length) }, () => worker()))
+}
+
 async function submitBatchUpload() {
   if (!selectedDrama.value) {
     ElMessage.warning(t('selectDramaFirst'))
     return
   }
-  batchUploading.value = true
-  let successCount = 0
-  let failCount = 0
+  const dramaId = selectedDrama.value.id
+  const toUpload = batchForm.episodes.filter(ep => ep.uploadStatus !== 'success')
 
-  for (const ep of batchForm.episodes) {
-    try {
-      ep.uploadStatus = 'uploading'
-      const data = await api.uploadStorage(ep.file.raw, 'video')
-      ep.videoUrl = data.url
-      ep.uploadStatus = 'success'
-      successCount++
-    } catch (err) {
-      ep.uploadStatus = 'fail'
-      failCount++
+  for (const ep of toUpload) {
+    const pe = reactive({
+      _id: Date.now() + Math.random() * 1000 + ep.episodeNo,
+      _status: 'uploading',
+      _controller: null,
+      _file: ep.file,
+      _dramaId: dramaId,
+      _form: {},
+      progress: 0,
+      speed: 0,
+      errorReason: null,
+      episodeNo: ep.episodeNo,
+      title: ep.title,
+      dramaName: field(selectedDrama.value, 'title') || '',
+      fileName: ep.file?.name || ep.file?.raw?.name || '',
+      fileSize: ep.file?.size || ep.file?.raw?.size || 0,
+      durationSeconds: ep.durationSeconds || null,
+      coverUrl: null,
+      coverObjectKey: null,
+      pricePoints: ep.pricePoints,
+      accessType: ep.accessType,
+      storageProvider: 'r2'
+    })
+    pendingEpisodes.push(pe)
+    ep._pendingRef = pe
+  }
+
+  batchDialog.value = false
+  batchUploading.value = true
+
+  await uploadEpisodesConcurrently(toUpload)
+
+  for (const ep of toUpload) {
+    const pe = ep._pendingRef
+    if (!pe) continue
+    if (ep.uploadStatus === 'success' && ep.videoUrl) {
+      pe._form.videoUrl = ep.videoUrl
+      pe._status = 'creating'
+      pe.progress = 100
+      await createPendingEpisode(pe)
+    } else {
+      pe._status = 'fail'
+      pe.errorReason = ep.errorReason || '上传失败'
     }
   }
 
-  const toCreate = batchForm.episodes.filter(ep => ep.videoUrl)
-  if (toCreate.length === 0) {
-    batchUploading.value = false
-    ElMessage.error(t('batchUploadAllFailed'))
-    return
-  }
+  batchUploading.value = false
+  batchForm.episodes = []
+  batchFileList.value = []
+  await loadEpisodes()
+}
 
+async function retryBatchEpisode(idx) {
+  const ep = batchForm.episodes[idx]
+  if (!ep || ep.uploadStatus === 'uploading' || ep.uploadStatus === 'success') return
+  ep.uploadStatus = 'uploading'
+  ep.progress = 0
+  ep.errorReason = null
   try {
-    await api.batchCreateEpisodes({
-      dramaId: selectedDrama.value.id,
-      startEpisodeNo: batchForm.startEpisodeNo,
-      episodes: toCreate.map(ep => ({
-        episodeNo: ep.episodeNo,
-        title: ep.title,
-        videoUrl: ep.videoUrl,
-        pricePoints: ep.pricePoints,
-        accessType: ep.accessType,
-        storageProvider: 'local'
-      }))
-    })
-    batchDialog.value = false
-    batchForm.episodes = []
-    batchFileList.value = []
-    ElMessage.success(t('batchUploadSuccess', { success: toCreate.length, fail: failCount }))
-    await loadEpisodes()
+    await uploadSingleEpisode(ep)
+    ElMessage.success(`第 ${ep.episodeNo} 集上传成功`)
   } catch (err) {
-    ElMessage.error(err.message || t('batchCreateFailed'))
-  } finally {
-    batchUploading.value = false
+    ep.uploadStatus = 'fail'
+    ep.errorReason = resolveUploadError(err)
+    ElMessage.error(`第 ${ep.episodeNo} 集重传失败：${resolveUploadError(err)}`)
   }
+}
+
+async function retryAllFailed() {
+  const failed = batchForm.episodes.filter(ep => ep.uploadStatus === 'fail')
+  if (!failed.length) return
+  batchUploading.value = true
+  await uploadEpisodesConcurrently(failed)
+  batchUploading.value = false
+  const stillFailed = batchForm.episodes.filter(ep => ep.uploadStatus === 'fail').length
+  const recovered = failed.length - stillFailed
+  if (stillFailed === 0) {
+    ElMessage.success(`全部 ${failed.length} 集重传成功`)
+  } else {
+    ElMessage.warning(`重传完成：${recovered} 集成功，${stillFailed} 集仍失败`)
+  }
+}
+
+function resolveUploadError(err) {
+  if (!err) return t('uploadFailed')
+  if (err.code === 'ECONNABORTED') return t('error.timeout') || '请求超时，请检查网络后重试'
+  if (err.response?.status === 413) return '文件太大，超过服务器限制'
+  if (err.response?.status === 401) return '登录已过期，请重新登录'
+  if (err.response?.status === 403) return '没有上传权限'
+  if (err.response?.status >= 500) return '服务器内部错误，请查看后端日志'
+  if (!err.response && err.message === 'Network Error') return '网络连接失败，请检查域名和服务器是否正常'
+  return err.message || String(err)
+}
+
+function batchEpisodeTagType(status) {
+  if (status === 'uploading') return 'primary'
+  if (status === 'success') return 'success'
+  if (status === 'fail') return 'danger'
+  return 'info'
+}
+
+function batchEpisodeStatusLabel(status) {
+  if (status === 'uploading') return t('uploading')
+  if (status === 'success') return t('uploadSuccess')
+  if (status === 'fail') return t('uploadFailed')
+  return ''
 }
 
 const selectedDramaEpisodes = computed(() => episodes.value.length)
@@ -3354,7 +3903,11 @@ function newDramaDraft() {
     theme: firstDramaFilterValue('theme', 'romance'),
     setting: firstDramaFilterValue('setting', 'ordinary'),
     audience: firstDramaFilterValue('audience', 'female'),
-    recommended: false
+    recommended: false,
+    // 新建短剧时无封面 objectKey,上传后由 uploadLocal 回填
+    coverObjectKey: null,
+    horizontalCoverObjectKey: null,
+    verticalCoverObjectKey: null
   }
 }
 
@@ -3385,6 +3938,9 @@ function dramaPayload(source = dramaForm) {
     coverUrl: nullableText(source.coverUrl),
     horizontalCoverUrl: nullableText(source.horizontalCoverUrl),
     verticalCoverUrl: nullableText(source.verticalCoverUrl),
+    coverObjectKey: nullableText(source.coverObjectKey),
+    horizontalCoverObjectKey: nullableText(source.horizontalCoverObjectKey),
+    verticalCoverObjectKey: nullableText(source.verticalCoverObjectKey),
     tags: nullableText(source.tags),
     freeEpisodeCount: nonNegativeNumber(source.freeEpisodeCount, 0),
     episodePricePoints: nonNegativeNumber(source.episodePricePoints, 10),
@@ -3462,16 +4018,225 @@ function newEpisodeDraft() {
     pricePoints: isFree ? 0 : (field(selectedDrama.value, 'episodePricePoints', 'episode_price_points') || 10),
     durationSeconds: 0,
     isFree,
-    sortOrder: nextNo
+    sortOrder: nextNo,
+    // 新建分集时无封面 objectKey,上传后由 uploadLocal 回填
+    coverObjectKey: null
   }
 }
 
 function editEpisode(row) {
   copyTo(episodeForm, normalize(row))
+  // cloudflare 模式：videoUrl 字段复用为 uid 显示载体，把 cloudflareUid 镜像进去
+  if (episodeForm.storageProvider === 'cloudflare' && episodeForm.cloudflareUid) {
+    episodeForm.videoUrl = episodeForm.cloudflareUid
+  }
   episodeDialog.value = true
 }
 
+// --- HLS 视频预览 & 转码状态 ---
+
+// 转码状态标签表(一次性生成,避免每行多次调用函数)
+const transcodeTagMap = computed(() => {
+  const result = {}
+  for (const row of episodes.value) {
+    const id = field(row, 'id')
+    if (!id) continue
+    const cached = transcodeStatusMap[id]
+    const status = cached !== undefined ? cached : field(row, 'transcodeStatus', 'transcode_status')
+    if (status === null || status === undefined) continue
+    const s = Number(status)
+    if (s === 0) result[id] = { status: 0, text: '未转码', cls: 'tag-offline' }
+    else if (s === 1) result[id] = { status: 1, text: '转码中', cls: 'tag-pending' }
+    else if (s === 2) result[id] = { status: 2, text: 'HLS', cls: 'tag-online' }
+    else if (s === -1) result[id] = { status: -1, text: '转码失败', cls: 'tag-error' }
+  }
+  return result
+})
+
+async function openVideoPreview(row) {
+  videoPreview.visible = true
+  videoPreview.loading = true
+  videoPreview.error = null
+  videoPreview.canRetry = false
+  videoPreview.src = ''
+  videoPreview.isHls = false
+  videoPreview.transcodeStatus = 0
+  videoPreview.row = row
+
+  const epId = field(row, 'id')
+  try {
+    const status = await api.transcodeStatus(epId)
+    const ts = Number(status?.status ?? 0)
+    videoPreview.transcodeStatus = ts
+    transcodeStatusMap[epId] = ts
+
+    const hlsUrl = status?.hls_url || status?.hlsUrl
+    const videoUrl = status?.video_url || status?.videoUrl || field(row, 'videoUrl', 'video_url')
+
+    if (ts === 2 && hlsUrl) {
+      // HLS 流播放
+      videoPreview.isHls = true
+      videoPreview.src = hlsUrl
+      videoPreview.loading = false
+      await nextTick()
+      attachHlsPlayer(hlsUrl)
+    } else if (ts === 1) {
+      // 转码中,先播放原始视频
+      videoPreview.isHls = false
+      videoPreview.src = videoUrl || ''
+      videoPreview.loading = false
+      startTranscodePolling(epId)
+    } else if (videoUrl) {
+      // 未转码或转码失败,播放原始视频
+      videoPreview.isHls = false
+      videoPreview.src = videoUrl
+      videoPreview.loading = false
+      if (ts === -1) {
+        videoPreview.canRetry = true
+      }
+    } else {
+      videoPreview.loading = false
+      videoPreview.error = '暂无可播放的视频'
+    }
+  } catch (e) {
+    videoPreview.loading = false
+    videoPreview.error = e.message || '获取视频信息失败'
+  }
+}
+
+function attachHlsPlayer(url) {
+  const video = videoPreviewRef.value
+  if (!video) return
+
+  // 清理之前的 HLS 实例
+  if (videoPreviewHls) {
+    videoPreviewHls.destroy()
+    videoPreviewHls = null
+  }
+
+  if (Hls.isSupported()) {
+    videoPreviewHls = new Hls({ maxBufferLength: 30 })
+    videoPreviewHls.loadSource(url)
+    videoPreviewHls.attachMedia(video)
+    videoPreviewHls.on(Hls.Events.ERROR, (event, data) => {
+      if (data.fatal) {
+        videoPreview.isHls = false
+        videoPreview.error = 'HLS 播放失败: ' + (data.details || data.type)
+        videoPreview.canRetry = true
+      }
+    })
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Safari 原生支持 HLS
+    video.src = url
+  } else {
+    videoPreview.error = '当前浏览器不支持 HLS 播放'
+  }
+}
+
+function closeVideoPreview() {
+  if (videoPreviewHls) {
+    videoPreviewHls.destroy()
+    videoPreviewHls = null
+  }
+  stopTranscodePolling()
+  videoPreview.src = ''
+  videoPreview.error = null
+  videoPreview.canRetry = false
+  videoPreview.row = null
+}
+
+async function retryTranscode(row) {
+  const epId = field(row, 'id')
+  try {
+    const res = await api.retranscode(epId)
+    if (res?.success !== false) {
+      ElMessage.success('已触发重新转码')
+      transcodeStatusMap[epId] = 1
+      // 如果视频预览弹窗打开,更新状态
+      if (videoPreview.visible && videoPreview.row && field(videoPreview.row, 'id') === epId) {
+        videoPreview.transcodeStatus = 1
+        videoPreview.canRetry = false
+        startTranscodePolling(epId)
+      }
+    } else {
+      ElMessage.warning(res?.message || '重新转码失败')
+    }
+  } catch (e) {
+    ElMessage.error(e.message || '重新转码失败')
+  }
+}
+
+function startTranscodePolling(epId) {
+  stopTranscodePolling()
+  transcodePollTimer = setInterval(async () => {
+    try {
+      const status = await api.transcodeStatus(epId)
+      const ts = Number(status?.status ?? 0)
+      transcodeStatusMap[epId] = ts
+      if (videoPreview.visible && videoPreview.row && field(videoPreview.row, 'id') === epId) {
+        videoPreview.transcodeStatus = ts
+        if (ts === 2 && (status?.hls_url || status?.hlsUrl)) {
+          // 转码完成,切换到 HLS 播放
+          stopTranscodePolling()
+          const hlsUrl = status.hls_url || status.hlsUrl
+          videoPreview.isHls = true
+          videoPreview.src = hlsUrl
+          nextTick(() => attachHlsPlayer(hlsUrl))
+        } else if (ts === -1) {
+          stopTranscodePolling()
+          videoPreview.canRetry = true
+          videoPreview.error = '转码失败,可点击重新转码'
+        }
+      } else {
+        stopTranscodePolling()
+      }
+    } catch (e) {
+      // 轮询失败,静默忽略
+    }
+  }, 5000)
+}
+
+function stopTranscodePolling() {
+  if (transcodePollTimer) {
+    clearInterval(transcodePollTimer)
+    transcodePollTimer = null
+  }
+}
+
 async function saveEpisode() {
+  const isUploading = getUploadProgress('episode-videoUrl').uploading
+  const hasVideoUrl = nullableText(episodeForm.videoUrl)
+  const hasVideoFile = episodeForm._pendingFile
+
+  if (isUploading || (hasVideoFile && !hasVideoUrl)) {
+    const pe = reactive({
+      _id: Date.now() + Math.random(),
+      _status: 'uploading',
+      _controller: uploadControllers['episode-videoUrl'] || null,
+      progress: getUploadProgress('episode-videoUrl').percent || 0,
+      speed: 0,
+      errorReason: null,
+      episodeNo: Number(episodeForm.episodeNo),
+      title: nullableText(episodeForm.title) || `第${episodeForm.episodeNo}集`,
+      dramaName: field(selectedDrama.value, 'title') || '',
+      fileName: episodeForm._pendingFile?.name || episodeForm._pendingFile?.raw?.name || '',
+      fileSize: episodeForm._pendingFile?.size || episodeForm._pendingFile?.raw?.size || 0,
+      durationSeconds: episodeForm.durationSeconds || null,
+      coverUrl: nullableText(episodeForm.coverUrl),
+      coverObjectKey: nullableText(episodeForm.coverObjectKey),
+      pricePoints: episodeForm.pricePoints,
+      accessType: String(episodeForm.accessType || 'POINTS').toUpperCase(),
+      storageProvider: 'r2',
+      _file: episodeForm._pendingFile,
+      _dramaId: Number(episodeForm.dramaId),
+      _form: { ...episodeForm }
+    })
+    pendingEpisodes.push(pe)
+    episodeDialog.value = false
+    watchUploadProgress(pe, 'episode-videoUrl')
+    return
+  }
+
   await runAction(async () => {
     await api.saveEpisode(episodePayload())
     episodeDialog.value = false
@@ -3483,11 +4248,19 @@ function episodePayload() {
   const dramaId = Number(episodeForm.dramaId)
   const episodeNo = Number(episodeForm.episodeNo)
   const title = nullableText(episodeForm.title)
-  const videoUrl = nullableText(episodeForm.videoUrl)
+  const storageProvider = nullableText(episodeForm.storageProvider) || 'oss'
+  // cloudflare 模式：videoUrl 字段复用为 uid 显示载体，提交时分离到 cloudflareUid，videoUrl 留空
+  const isCloudflare = storageProvider === 'cloudflare'
+  const cloudflareUid = isCloudflare ? nullableText(episodeForm.videoUrl) || nullableText(episodeForm.cloudflareUid) : null
+  const videoUrl = isCloudflare ? null : nullableText(episodeForm.videoUrl)
   if (!Number.isInteger(dramaId) || dramaId <= 0) throw new Error(t('episodeDramaRequired'))
   if (!Number.isInteger(episodeNo) || episodeNo <= 0) throw new Error(t('episodeNoRequired'))
   if (!title) throw new Error(t('episodeTitleRequired'))
-  if (!videoUrl) throw new Error(t('episodeVideoRequired'))
+  if (isCloudflare) {
+    if (!cloudflareUid) throw new Error(t('episodeCloudflareUidRequired'))
+  } else {
+    if (!videoUrl) throw new Error(t('episodeVideoRequired'))
+  }
   const accessType = String(episodeForm.accessType || 'POINTS').toUpperCase()
   return {
     id: episodeForm.id,
@@ -3496,13 +4269,15 @@ function episodePayload() {
     title,
     description: nullableText(episodeForm.description),
     coverUrl: nullableText(episodeForm.coverUrl),
+    coverObjectKey: nullableText(episodeForm.coverObjectKey),
     videoUrl,
+    cloudflareUid,
     durationSeconds: nonNegativeNumber(episodeForm.durationSeconds, 0),
     accessType,
     isFree: accessType === 'FREE',
     pricePoints: accessType === 'FREE' ? 0 : nonNegativeNumber(episodeForm.pricePoints, 10),
     sortOrder: nonNegativeNumber(episodeForm.sortOrder, episodeNo),
-    storageProvider: nullableText(episodeForm.storageProvider) || 'oss',
+    storageProvider,
     status: Number(episodeForm.status ?? 1)
   }
 }
@@ -3571,21 +4346,275 @@ async function toggleEpisodeStatus(row) {
   })
 }
 
-async function uploadLocal(options, target, fieldName, type) {
+async function uploadUserAvatar(options) {
+  const progressKey = 'user-avatar'
+  setUploadProgress(progressKey, { uploading: true, percent: 0, error: null })
+  uploadingUserAvatar.value = true
   try {
-    const data = await api.uploadStorage(options.file, type)
-    target[fieldName] = data.url
-    if (fieldName === 'videoUrl') {
-      target.storageProvider = 'local'
-      if (data.durationSeconds && target.durationSeconds !== undefined) {
-        target.durationSeconds = data.durationSeconds
-      }
-    }
+    const data = await api.uploadUserAvatar(options.file)
+    userForm.avatarUrl = data?.url || ''
     options.onSuccess?.(data)
+    setUploadProgress(progressKey, { uploading: false, percent: 100 })
     ElMessage.success(t('uploadSuccess'))
   } catch (err) {
+    let reason = err.message || String(err)
+    if (err.code === 'ECONNABORTED') reason = '上传超时，请检查网络后重试'
+    else if (err.response?.status === 413) reason = '文件太大，超过服务器限制'
+    else if (err.response?.status === 401) reason = '登录已过期，请重新登录'
+    else if (err.response?.status === 403) reason = '没有上传权限'
+    else if (err.response?.status >= 500) reason = '服务器内部错误，请查看后端日志'
+    else if (!err.response && err.message === 'Network Error') reason = '网络连接失败，请检查域名和服务器是否正常'
+    setUploadProgress(progressKey, { uploading: false, error: reason })
     options.onError?.(err)
-    ElMessage.error(err.message || String(err))
+    ElMessage.error(reason)
+  } finally {
+    uploadingUserAvatar.value = false
+  }
+}
+
+// 封面 URL 字段名 → 对应 objectKey 字段名映射,上传成功后同步回填 objectKey,便于保存时透传给后端级联删 R2 对象
+const COVER_OBJECT_KEY_FIELDS = {
+  coverUrl: 'coverObjectKey',
+  horizontalCoverUrl: 'horizontalCoverObjectKey',
+  verticalCoverUrl: 'verticalCoverObjectKey'
+}
+
+function uploadLocal(options, target, fieldName, type, progressKey) {
+  if (type === 'video' || fieldName === 'videoUrl') {
+    target._pendingFile = options.file
+    const rawFile = options.file?.raw || options.file
+    if (rawFile) {
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      video.onloadedmetadata = () => {
+        if (video.duration && video.duration > 0 && target.durationSeconds !== undefined) {
+          target.durationSeconds = Math.round(video.duration)
+        }
+        URL.revokeObjectURL(video.src)
+      }
+      video.src = URL.createObjectURL(rawFile)
+    }
+  }
+  doUpload(options, target, fieldName, type, progressKey)
+  return Promise.resolve()
+}
+
+function formatSpeed(bytesPerSec) {
+  if (!bytesPerSec || bytesPerSec <= 0) return '0 KB/s'
+  if (bytesPerSec < 1024) return `${bytesPerSec.toFixed(0)} B/s`
+  if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`
+  return `${(bytesPerSec / 1024 / 1024).toFixed(1)} MB/s`
+}
+
+function formatFileSize(bytes) {
+  if (!bytes || bytes <= 0) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+}
+
+function watchUploadProgress(pe, uploadKey) {
+  const check = () => {
+    const prog = getUploadProgress(uploadKey)
+    pe.progress = prog.percent
+    pe.speed = prog.speed
+    if (prog.uploading) {
+      setTimeout(check, 500)
+    } else if (prog.error && prog.error !== '已取消') {
+      pe._status = 'fail'
+      pe.errorReason = prog.error
+    } else if (!prog.error && prog.percent >= 100) {
+      pe._form = pe._form || {}
+      if (episodeForm.videoUrl && !pe._form.videoUrl) {
+        pe._form.videoUrl = episodeForm.videoUrl
+      }
+      if (episodeForm.coverObjectKey && !pe._form.coverObjectKey) {
+        pe._form.coverObjectKey = episodeForm.coverObjectKey
+      }
+      if (episodeForm.durationSeconds && !pe.durationSeconds) {
+        pe.durationSeconds = episodeForm.durationSeconds
+      }
+      pe._status = 'creating'
+      createPendingEpisode(pe)
+    } else if (prog.error === '已取消') {
+      pe._status = 'fail'
+      pe.errorReason = '已取消'
+    }
+  }
+  setTimeout(check, 500)
+}
+
+async function createPendingEpisode(pe) {
+  try {
+    const accessType = pe.accessType || 'POINTS'
+    const payload = {
+      dramaId: pe._dramaId,
+      episodeNo: pe.episodeNo,
+      title: pe.title,
+      coverUrl: pe.coverUrl || null,
+      coverObjectKey: pe.coverObjectKey || null,
+      videoUrl: pe._form?.videoUrl || pe._form?.video_url || null,
+      cloudflareUid: null,
+      durationSeconds: pe.durationSeconds || 0,
+      accessType,
+      isFree: accessType === 'FREE',
+      pricePoints: accessType === 'FREE' ? 0 : (pe.pricePoints || 10),
+      storageProvider: 'r2',
+      sortOrder: pe.episodeNo,
+      status: 1
+    }
+    await api.saveEpisode(payload)
+    const idx = pendingEpisodes.indexOf(pe)
+    if (idx >= 0) pendingEpisodes.splice(idx, 1)
+    await loadEpisodes()
+    ElMessage.success(`第 ${pe.episodeNo} 集上传保存成功`)
+  } catch (err) {
+    pe._status = 'fail'
+    pe.errorReason = err.message || '保存失败'
+    ElMessage.error(`第 ${pe.episodeNo} 集保存失败：${err.message || err}`)
+  }
+}
+
+function removePendingEpisode(pe) {
+  const idx = pendingEpisodes.indexOf(pe)
+  if (idx >= 0) pendingEpisodes.splice(idx, 1)
+}
+
+async function retryPendingEpisode(pe) {
+  if (!pe._file) {
+    ElMessage.warning('文件已丢失，请重新编辑上传')
+    return
+  }
+  pe._status = 'uploading'
+  pe.progress = 0
+  pe.errorReason = null
+  const controller = new AbortController()
+  pe._controller = controller
+  let lastTime = Date.now()
+  let lastLoaded = 0
+  const onProgress = (e) => {
+    if (e.lengthComputable) {
+      pe.progress = Math.min(99, Math.round((e.loaded / e.total) * 100))
+      const now = Date.now()
+      const dt = (now - lastTime) / 1000
+      const dl = e.loaded - lastLoaded
+      pe.speed = dt > 0 ? dl / dt : 0
+      lastTime = now
+      lastLoaded = e.loaded
+    }
+  }
+  try {
+    const rawFile = pe._file?.raw || pe._file
+    const presign = await api.presignStorage(rawFile.name, rawFile.type || 'video/mp4', 'video')
+    if (!presign || !presign.supported || !presign.presignedUrl) {
+      throw new Error('R2 未启用，请检查服务器配置')
+    }
+    await api.putToPresignedUrl(presign.presignedUrl, rawFile, presign.headers, onProgress, controller.signal)
+    pe._form = pe._form || {}
+    pe._form.videoUrl = presign.url
+    pe._status = 'creating'
+    pe.progress = 100
+    await createPendingEpisode(pe)
+  } catch (err) {
+    pe._status = 'fail'
+    pe.errorReason = err.message === 'UPLOAD_CANCELLED' ? '已取消' : resolveUploadError(err)
+  }
+}
+
+function cancelUpload(progressKey) {
+  if (uploadControllers[progressKey]) {
+    uploadControllers[progressKey].abort()
+    delete uploadControllers[progressKey]
+  }
+  setUploadProgress(progressKey, { uploading: false, percent: 0, error: '已取消' })
+}
+
+async function doUpload(options, target, fieldName, type, progressKey) {
+  const controller = new AbortController()
+  uploadControllers[progressKey] = controller
+  const fileName = options.file?.name || progressKey
+  setUploadProgress(progressKey, { uploading: true, percent: 0, error: null, speed: 0 })
+  let lastTime = Date.now()
+  let lastLoaded = 0
+  const onProgress = (e) => {
+    if (e.lengthComputable) {
+      const percent = Math.round((e.loaded / e.total) * 100)
+      const now = Date.now()
+      const dt = (now - lastTime) / 1000
+      const dl = e.loaded - lastLoaded
+      const speed = dt > 0 ? dl / dt : 0
+      lastTime = now
+      lastLoaded = e.loaded
+      setUploadProgress(progressKey, { percent, speed })
+    }
+  }
+  try {
+    if (fieldName === 'videoUrl' && target.storageProvider === 'cloudflare') {
+      target.storageProvider = 'r2'
+      target.cloudflareUid = null
+    }
+    const isVideo = type === 'video' || fieldName === 'videoUrl'
+    const R2_ALIASES = new Set(['cloudflare', 'oss', 'cos', 'r2'])
+    const tryR2Presign = isVideo || R2_ALIASES.has(target.storageProvider)
+
+    let presignError = null
+    let presignData = null
+    if (tryR2Presign) {
+      try {
+        const presign = await api.presignStorage(options.file.name, options.file.type, type)
+        if (presign && presign.supported && presign.presignedUrl) {
+          presignData = presign
+        } else {
+          const supported = presign && presign.supported
+          presignError = supported === false
+            ? 'R2 未启用或配置不完整。请检查服务器 .env 中 R2_ENABLED=true 及 CLOUDFLARE_R2_* 相关变量。'
+            : '预签名接口返回异常,请检查后端日志。'
+        }
+      } catch (presignErr) {
+        presignError = `请求 R2 预签名失败:${resolveUploadError(presignErr)}`
+      }
+    }
+
+    if (presignData) {
+      await api.putToPresignedUrl(presignData.presignedUrl, options.file, presignData.headers, onProgress, controller.signal)
+      target[fieldName] = presignData.url
+      if (fieldName === 'videoUrl') {
+        target.storageProvider = 'r2'
+        target.cloudflareUid = null
+      }
+      const coverObjectKeyField = COVER_OBJECT_KEY_FIELDS[fieldName]
+      if (coverObjectKeyField) {
+        target[coverObjectKeyField] = presignData.objectKey || null
+      }
+      options.onSuccess?.(presignData)
+      setUploadProgress(progressKey, { uploading: false, percent: 100 })
+      ElMessage.success(t('uploadSuccess'))
+    } else if (isVideo) {
+      const msg = `${presignError || 'R2 预签名直传未启用'}\n请检查服务器 .env 中 R2 配置,或使用「VPS中转上传」。`
+      setUploadProgress(progressKey, { uploading: false, error: msg })
+      options.onError?.(new Error(msg))
+      ElMessage({ type: 'error', message: msg, duration: 10000 })
+    } else {
+      const data = await api.uploadStorage(options.file, type, onProgress)
+      target[fieldName] = data.url
+      const coverObjectKeyField = COVER_OBJECT_KEY_FIELDS[fieldName]
+      if (coverObjectKeyField) target[coverObjectKeyField] = data.objectKey || null
+      options.onSuccess?.(data)
+      setUploadProgress(progressKey, { uploading: false, percent: 100 })
+      ElMessage.success(t('uploadSuccess'))
+    }
+  } catch (err) {
+    if (err.message === 'UPLOAD_CANCELLED') {
+      setUploadProgress(progressKey, { uploading: false, percent: 0, error: '已取消' })
+    } else {
+      let reason = resolveUploadError(err)
+      setUploadProgress(progressKey, { uploading: false, error: reason })
+      options.onError?.(err)
+      ElMessage({ type: 'error', message: reason, duration: 10000 })
+    }
+  } finally {
+    delete uploadControllers[progressKey]
   }
 }
 
@@ -3614,6 +4643,8 @@ function normalize(row) {
     hotScore: row.hotScore ?? row.hot_score ?? 0,
     horizontalCoverUrl: row.horizontalCoverUrl ?? row.horizontal_cover_url,
     verticalCoverUrl: row.verticalCoverUrl ?? row.vertical_cover_url,
+    horizontalCoverObjectKey: row.horizontalCoverObjectKey ?? row.horizontal_cover_object_key,
+    verticalCoverObjectKey: row.verticalCoverObjectKey ?? row.vertical_cover_object_key,
     episodePricePoints: row.episodePricePoints ?? row.episode_price_points,
     wholePricePoints: row.wholePricePoints ?? row.whole_price_points,
     onlineTime: normalizeDateTime(row.onlineTime ?? row.online_time),
@@ -3622,7 +4653,9 @@ function normalize(row) {
     dramaId: row.dramaId ?? row.drama_id,
     episodeNo: row.episodeNo ?? row.episode_no,
     coverUrl: row.coverUrl ?? row.cover_url,
+    coverObjectKey: row.coverObjectKey ?? row.cover_object_key,
     videoUrl: row.videoUrl ?? row.video_url,
+    cloudflareUid: row.cloudflareUid ?? row.cloudflare_uid,
     pricePoints: row.pricePoints ?? row.price_points,
     durationSeconds: row.durationSeconds ?? row.duration_seconds,
     isFree: Boolean(Number(row.isFree ?? row.is_free ?? 0)),

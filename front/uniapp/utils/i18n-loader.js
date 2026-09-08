@@ -61,7 +61,7 @@ function getSupportedLanguages() {
 }
 
 function getLocale() {
-  return uni.getStorageSync('locale') || 'en'
+  return uni.getStorageSync('locale') || 'zh-Hans'
 }
 
 function setLocale(locale) {

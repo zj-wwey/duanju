@@ -9,7 +9,13 @@
         :class="{ active: activeKey === item.key }"
         @click="go(item)"
       >
-        <view class="app-tabbar-icon">{{ item.icon }}</view>
+        <view class="app-tabbar-icon-wrap">
+          <u-icon
+            :name="activeKey === item.key ? item.activeIcon : item.icon"
+            :size="40"
+            :color="activeKey === item.key ? '#f7c66a' : 'rgba(255,255,255,0.85)'"
+          ></u-icon>
+        </view>
         <view class="app-tabbar-label">{{ item.labelKey ? t(item.labelKey) : item.label }}</view>
         <view v-if="item.key === 'mine' && unreadDot" class="app-tabbar-dot"></view>
       </view>
@@ -43,10 +49,10 @@ export default {
     return {
       locale: getLocale(),
       tabs: [
-        { key: 'home', labelKey: 'homeTab', icon: '⌂', url: TAB_ROUTES.home },
-        { key: 'theater', labelKey: 'theaterTab', icon: '▦', url: TAB_ROUTES.theater },
-        { key: 'store', labelKey: 'storeTab', icon: '◇', url: TAB_ROUTES.store },
-        { key: 'mine', labelKey: 'mineTab', icon: '◎', url: TAB_ROUTES.mine }
+        { key: 'home', labelKey: 'homeTab', icon: 'home', activeIcon: 'home-fill', url: TAB_ROUTES.home },
+        { key: 'theater', labelKey: 'theaterTab', icon: 'grid', activeIcon: 'grid-fill', url: TAB_ROUTES.theater },
+        { key: 'store', labelKey: 'storeTab', icon: 'shopping-cart', activeIcon: 'shopping-cart-fill', url: TAB_ROUTES.store },
+        { key: 'mine', labelKey: 'mineTab', icon: 'account', activeIcon: 'account-fill', url: TAB_ROUTES.mine }
       ]
     }
   },
@@ -76,7 +82,7 @@ export default {
 
 <style>
 .app-tabbar-spacer {
-  height: calc(88rpx + env(safe-area-inset-bottom));
+  height: calc(104rpx + env(safe-area-inset-bottom));
 }
 
 .app-tabbar {
@@ -88,11 +94,13 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  height: calc(80rpx + env(safe-area-inset-bottom));
-  padding: 6rpx 8rpx calc(6rpx + env(safe-area-inset-bottom));
+  height: calc(96rpx + env(safe-area-inset-bottom));
+  padding: 10rpx 8rpx calc(8rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
-  background: rgba(10, 10, 12, 0.94);
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(17, 17, 22, 0.96), rgba(8, 8, 10, 0.99));
+  backdrop-filter: blur(16rpx);
+  border-top: 1rpx solid rgba(247, 198, 106, 0.18);
+  box-shadow: 0 -6rpx 24rpx rgba(0, 0, 0, 0.45);
 }
 
 .app-tabbar-item {
@@ -102,24 +110,44 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2rpx;
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 18rpx;
+  gap: 4rpx;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 22rpx;
   line-height: 22rpx;
+  transition: transform 0.18s ease;
 }
 
+.app-tabbar-item:active {
+  transform: scale(0.92);
+}
+
+/* 选中态：金色文字 + 图标微微上浮 */
 .app-tabbar-item.active {
-  color: #fff;
+  color: #f7c66a;
 }
 
-.app-tabbar-icon {
-  height: 30rpx;
-  line-height: 30rpx;
-  font-size: 26rpx;
+.app-tabbar-item.active .app-tabbar-label {
+  font-family: 'PingFang SC', 'HarmonyOS Sans', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  color: #f7c66a;
   font-weight: 800;
+  text-shadow: 0 0 12rpx rgba(247, 198, 106, 0.45);
+}
+
+.app-tabbar-item.active .app-tabbar-icon-wrap {
+  transform: translateY(-4rpx);
+}
+
+.app-tabbar-icon-wrap {
+  width: 56rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s ease;
 }
 
 .app-tabbar-label {
+  font-family: 'PingFang SC', 'HarmonyOS Sans', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -128,11 +156,12 @@ export default {
 
 .app-tabbar-dot {
   position: absolute;
-  right: 28rpx;
-  top: 6rpx;
-  width: 10rpx;
-  height: 10rpx;
+  right: 30rpx;
+  top: 2rpx;
+  width: 12rpx;
+  height: 12rpx;
   border-radius: 50%;
-  background: #ff4d5f;
+  background: linear-gradient(135deg, #ff6b81, #ff2d55);
+  box-shadow: 0 0 8rpx rgba(255, 45, 85, 0.7);
 }
 </style>

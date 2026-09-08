@@ -316,10 +316,13 @@ page,
 }
 
 .form-input {
+  width: 100%;
+  height: 88rpx;
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.08);
   border: 1rpx solid rgba(255, 255, 255, 0.14);
   border-radius: 18rpx;
-  padding: 24rpx;
+  padding: 0 24rpx;
   font-size: 28rpx;
   color: #fff;
   transition: border-color 0.2s ease, background 0.2s ease;
@@ -339,6 +342,8 @@ page,
 }
 
 .picker-value {
+  width: 100%;
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.08);
   border: 1rpx solid rgba(255, 255, 255, 0.14);
   border-radius: 18rpx;

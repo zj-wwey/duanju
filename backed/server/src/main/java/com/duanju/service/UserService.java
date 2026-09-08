@@ -4,14 +4,20 @@ import com.duanju.entity.AppUser;
 import com.duanju.service.entity.AppUserService;
 import com.duanju.util.MapUtil;
 import com.duanju.util.PasswordUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final AppUserService appUserService;
     private final StorageService storageService;
@@ -38,6 +44,43 @@ public class UserService {
                 .eq(AppUser::getId, userId)
                 .update();
         return toSafeMap(appUserService.getById(userId));
+    }
+
+    /**
+     * 上传用户头像 (multipart 模式),返回包含 url + objectKey 的 Map。
+     * 调用方拿到 objectKey 后已直接写入 user.avatarObjectKey 字段。
+     * 同时清理旧头像对应的 R2 对象,避免产生孤儿对象。
+     */
+    public Map<String, String> uploadAvatar(Long userId, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("file is empty");
+        }
+        Map<String, String> result = storageService.saveAvatarWithFile(file);
+        String newUrl = result.get("url");
+        String newObjectKey = result.get("objectKey");
+
+        AppUser user = appUserService.getById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("user not found");
+        }
+        // 清理旧头像对象,避免 R2 孤儿对象;失败不阻断主流程
+        String oldObjectKey = user.getAvatarObjectKey();
+        if (oldObjectKey != null && !oldObjectKey.isBlank()) {
+            try {
+                storageService.deleteObject(oldObjectKey);
+            } catch (Exception e) {
+                log.warn("Failed to delete old R2 avatar object for userId={}, key={}, skip",
+                        userId, oldObjectKey, e);
+            }
+        }
+        user.setAvatarUrl(newUrl);
+        user.setAvatarObjectKey(newObjectKey);
+        appUserService.updateById(user);
+
+        Map<String, String> out = new LinkedHashMap<>();
+        out.put("url", newUrl);
+        out.put("objectKey", newObjectKey);
+        return out;
     }
 
     public void changePassword(Long userId, String oldPassword, String newPassword) {
@@ -186,6 +229,16 @@ public class UserService {
         AppUser user = appUserService.getById(userId);
         if (user == null) {
             throw new IllegalArgumentException("user not found");
+        }
+        // 物理删除前清理 R2 头像对象,避免孤儿对象
+        String avatarObjectKey = user.getAvatarObjectKey();
+        if (avatarObjectKey != null && !avatarObjectKey.isBlank()) {
+            try {
+                storageService.deleteObject(avatarObjectKey);
+            } catch (Exception e) {
+                log.warn("Failed to delete R2 avatar object for userId={}, key={}, skip",
+                        userId, avatarObjectKey, e);
+            }
         }
         appUserService.removeById(userId);
     }

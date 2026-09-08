@@ -7,7 +7,9 @@ import com.duanju.security.PrincipalHolder;
 import com.duanju.service.StorageService;
 import com.duanju.service.entity.AdminUserService;
 import com.duanju.util.PasswordUtil;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -62,6 +64,33 @@ public class AdminProfileController {
         adminUserService.updateById(admin);
         admin.setPasswordHash(null);
         return R.ok(MapUtil.beanToMap(admin));
+    }
+
+    /** 上传管理员头像 (multipart),返回 {url, objectKey},并清理旧头像对象 */
+    @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public R<Map<String, String>> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        Long adminId = PrincipalHolder.adminId();
+        if (adminId == null) {
+            return R.fail("未登录");
+        }
+        AdminUser admin = adminUserService.getById(adminId);
+        if (admin == null) {
+            return R.fail("管理员不存在");
+        }
+        Map<String, String> result = storageService.saveAvatarWithFile(file);
+        // 清理旧头像 R2 对象,失败不阻断主流程
+        String oldKey = admin.getAvatarObjectKey();
+        if (oldKey != null && !oldKey.isBlank()) {
+            try {
+                storageService.deleteObject(oldKey);
+            } catch (Exception ignored) {
+                // 静默处理:不阻断头像更新流程
+            }
+        }
+        admin.setAvatar(result.get("url"));
+        admin.setAvatarObjectKey(result.get("objectKey"));
+        adminUserService.updateById(admin);
+        return R.ok(result);
     }
 
     @PutMapping("/password")

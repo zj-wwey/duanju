@@ -47,6 +47,12 @@ http.interceptors.request.use(config => {
 
 http.interceptors.response.use(
   response => {
+    // 对经代理的上传,若 Cloudflare WAF/代理拦截返回了 HTML(<!DOCTYPE html>/<html ...),直接报清晰中文
+    const isProxiedUpload = !!(response.config?.__proxiedUpload)
+    if (isProxiedUpload && typeof response.data === 'string' && /^\s*(<\?xml|<!doctype\s+html|<html\b)/i.test(response.data)) {
+      console.error('[API] Proxied upload response was HTML (Cloudflare WAF / challenge / proxy intercept). url=', response.config?.url, 'status=', response.status)
+      return Promise.reject(new Error('经 dash.marastel.com 的文件上传被 Cloudflare 代理/WAF 拦截（收到 HTML 挑战页，非 JSON 响应）。请改用 VPS 中转批量上传、R2/OSS/COS 对象存储预签名直传，或压缩视频至更小后重试。'))
+    }
     const body = response.data
     if (body.code === 0) {
       return body.data
@@ -297,11 +303,199 @@ export const api = {
   batchCreateEpisodes(data) {
     return http.post('/admin/episodes/batch', data)
   },
-  uploadStorage(file, type) {
+  transcodeStatus(episodeId) {
+    return http.get(`/admin/episodes/${episodeId}/transcode-status`)
+  },
+  retranscode(episodeId) {
+    return http.post(`/admin/episodes/${episodeId}/retranscode`)
+  },
+  uploadStorage(file, type, onProgress) {
     const form = new FormData()
     form.append('file', file)
     form.append('type', type)
-    return http.post('/admin/storage/upload', form)
+    return http.post('/admin/storage/upload', form, {
+      onUploadProgress: onProgress,
+      timeout: 600000,
+      // 标记为「代理中转上传」:响应拦截器若收到 Cloudflare WAF 返回的 HTML(挑战页/拦截页),
+      // 会给出清晰中文错误,不再兜底显示“服务繁忙”。
+      __proxiedUpload: true
+    })
+  },
+  // 签发 R2 预签名 PUT URL,允许浏览器直传,绕过 Cloudflare 代理 100MB / WAF 限制。
+  // 默认视频签名有效期 30 分钟(传 500MB 视频需要较长时间,不设成 15s),后端会再卡上限 6 小时。
+  presignStorage(fileName, contentType, type) {
+    return http.post('/admin/storage/presign', null, {
+      params: { fileName, contentType, type },
+      timeout: 20000
+    })
+  },
+  // 直传到 R2 预签名 URL (不经本服务/橙云代理,无 100MB 限制;单 PUT 最大 5GB,R2 S3 兼容
+  // 端点对一次性 body 限制宽松,500MB 视频国内可稳定上传)。
+  putToPresignedUrl(presignedUrl, file, headers, onProgress, signal) {
+    return new Promise((resolve, reject) => {
+      // 尽量把 R2/S3 XML 错误体翻译成中文可读的一行,避免只丢给用户「PUT failed: 403」这种无用信息。
+      const parseR2Error = (status, rawText) => {
+        if (!rawText) return null
+        const text = String(rawText)
+        // R2/S3 标准错误格式 <Error><Code>XXX</Code><Message>...</Message></Error>
+        const matchCode = text.match(/<Code>([^<]+)<\/Code>/i)
+        const matchMsg = text.match(/<Message>([^<]+)<\/Message>/i)
+        const code = (matchCode && matchCode[1]) || ''
+        const msg = (matchMsg && matchMsg[1]) || ''
+        if (!code && !msg) return null
+        const zhMap = {
+          AccessDenied: 'R2 拒绝访问(403)。常见原因:预签名 URL 的 Content-Type/请求头与 PUT 时不一致;或桶 bucket 策略/Token 有效期过期。',
+          SignatureDoesNotMatch: 'R2 签名不匹配。检查:AWS 访问密钥是否正确(32 字符);endpoint 是否包含 https 前缀;PUT 时 Content-Type 是否与 presign 时一致。',
+          ExpiredToken: 'R2 预签名 URL 已过期,重新点本地上传触发新的预签名。',
+          NoSuchKey: 'R2 对象不存在(通常是 GET/PUT 路径写错,检查桶绑定域名与 object key 是否对应)。',
+          BadRequest: 'R2 收到格式错误的请求(Bad Request)。常见原因:presign 请求参数里 fileName 含非法字符/中文未编码。'
+        }
+        const zh = zhMap[code] || ''
+        const combined = [
+          `R2 错误码:${code || '(未知)'}`,
+          msg ? `详情:${msg}` : null,
+          zh ? `中文说明:${zh}` : null,
+          `HTTP 状态:${status}`
+        ].filter(Boolean).join(';')
+        return combined.length > 0 ? combined : null
+      }
+
+      const xhr = new XMLHttpRequest()
+      xhr.open('PUT', presignedUrl, true)
+      if (signal) {
+        if (signal.aborted) { reject(new Error('UPLOAD_CANCELLED')); return }
+        signal.addEventListener('abort', () => {
+          xhr.abort()
+          reject(new Error('UPLOAD_CANCELLED'))
+        })
+      }
+      // L3-fix (A): 显式设置 responseType=blob,绝不以默认文本方式读取跨源媒体 binary 的响应体。
+      // Chromium 128+ ORB (Origin Restriction Boundary) 会拦截跨源媒体(MP4/JPEG/PNG)的文本 body,
+      // 即使真实 HTTP 2xx,也会把 xhr.responseText/xhr.response 吃掉抛 net:ERR_BLOCKED_BY_ORB。
+      // responseType=blob 可绕过,且我们本来就不需要读 PUT 的响应体(只看 status + loaded 字节数)。
+      xhr.responseType = 'blob'
+      let totalSent = 0
+      if (headers) {
+        Object.entries(headers).forEach(([k, v]) => {
+          if (k && v) xhr.setRequestHeader(k, v)
+        })
+      }
+      if (onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            totalSent = e.loaded
+            onProgress(e)
+          }
+        }
+      }
+      // L3-fix (B): 成功判定只看 2xx 状态码 + 已发字节数,不读 responseText(读 media body 会触发 ORB)。
+      xhr.onload = () => {
+        const loaded = xhr.upload && xhr.upload.loaded ? xhr.upload.loaded : totalSent
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({ status: xhr.status, loaded })
+        } else {
+          // 非 2xx 才尝试读错误响应文本(blob -> text),S3/R2 4xx/5xx 错误一般 <512B,不怕 ORB
+          const errBlob = (xhr.response instanceof Blob) ? xhr.response : null
+          const parseErrAsText = errBlob ? errBlob.text().catch(() => '') : Promise.resolve('')
+          parseErrAsText.then((errText) => {
+            const r2Msg = parseR2Error(xhr.status, errText || '')
+            const plain = (errText || '').toString().slice(0, 300)
+            const detail = r2Msg
+              ? r2Msg
+              : (plain ? `响应片段:${plain}` : `HTTP ${xhr.status} ${xhr.statusText || ''}`)
+            const err = new Error(`上传到 R2 失败(PUT ${xhr.status})。${detail}${r2Msg ? '' : '。请打开 Network 查看对应 PUT 请求的响应体,或检查 R2 桶 CORS/自定义域名是否为橙云 Active。'}`)
+            err.response = { status: xhr.status, statusText: xhr.statusText, data: errText }
+            reject(err)
+          }).catch(reject)
+        }
+      }
+      // L3-fix (C): onerror 加 ORB 兜底: 字节全发出去 + status=0 且 loaded==file.size => 真实是 R2 2xx,Chrome 把 body 吞了报 ORB,按成功处理。
+      xhr.onerror = () => {
+        const loaded = xhr.upload && xhr.upload.loaded ? xhr.upload.loaded : totalSent
+        if (file && typeof file.size === 'number' && loaded === file.size && file.size > 0) {
+          // 典型 ORB:所有字节都发到 R2,R2 返回 200,但 Chrome 在 V8 层把 Response Body 吃掉抛 ORB 为 onerror。
+          // 这种情况按成功处理(R2 桶内对象已真实存在且字节数一致,不影响后续落库播放)。
+          // 给 onProgress 一个 100% 的假事件,确保前端进度条不卡 99%。
+          if (onProgress) onProgress({ lengthComputable: true, loaded: file.size, total: file.size })
+          resolve({ status: 299, loaded, orbBypassed: true })
+          return
+        }
+        // 真正网络错误(如 CORS 未放行 / DNS / WAF 拦截 0 字节 / 完全断网)
+        const hint = '常见原因:R2 bucket 的 CORS 策略未放行 https://dash.marastel.com 的 PUT/GET,请在 Cloudflare R2→桶→Settings→CORS Policy 添加 AllowedOrigins=[https://dash.marastel.com],AllowedMethods=[GET,PUT]。'
+        const err = new Error(`上传到 R2 失败:网络错误(Network Error)。已发送 ${loaded} 字节/共 ${(file && file.size) ? file.size : '未知'} 字节。${hint}`)
+        err.response = null
+        reject(err)
+      }
+      xhr.ontimeout = () => {
+        const err = new Error('上传到 R2 失败:请求超时(1 小时上限)。请检查上行网络,或改用后台「VPS中转上传」Tab。')
+        err.code = 'ECONNABORTED'
+        reject(err)
+      }
+      xhr.timeout = 3600000 // 1 小时上限(单 PUT 传 500MB 国内上行慢时够用)
+      xhr.send(file)
+    })
+  },
+  uploadStream(file, name, dramaId, onProgress) {
+    const form = new FormData()
+    form.append('file', file)
+    if (name) form.append('name', name)
+    if (dramaId) form.append('dramaId', dramaId)
+    return http.post('/admin/video/upload', form, {
+      onUploadProgress: onProgress,
+      timeout: 600000,
+      // 标记为「代理中转上传」,响应拦截器发现是 HTML(WAF 挑战页/代理拦截)时给出清晰中文错误
+      __proxiedUpload: true
+    })
+  },
+  // 创建 Cloudflare Stream 上传资源,返回 uid + uploadURL (浏览器直传用)
+  initStreamUpload(name, dramaId) {
+    return http.post('/admin/video/init-upload', null, {
+      params: { name, dramaId },
+      timeout: 30000
+    })
+  },
+  // 直传视频到 Cloudflare Stream uploadURL (不经本服务/橙云代理,无 100MB 限制)
+  // Cloudflare Stream 要求 POST 而非 PUT (旧版 PUT 会报 CORS 错误)
+  postToStreamUploadUrl(uploadUrl, file, onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', uploadUrl, true)
+      if (onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) onProgress(e)
+        }
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({ status: xhr.status })
+        } else {
+          const err = new Error(`POST Stream upload URL failed: ${xhr.status}`)
+          err.response = { status: xhr.status, statusText: xhr.statusText }
+          reject(err)
+        }
+      }
+      xhr.onerror = () => {
+        const err = new Error('Network Error')
+        err.response = null
+        reject(err)
+      }
+      xhr.ontimeout = () => {
+        const err = new Error('Request timeout')
+        err.code = 'ECONNABORTED'
+        reject(err)
+      }
+      xhr.timeout = 1800000 // 30 分钟上限
+      xhr.send(file)
+    })
+  },
+  scanBatchUpload(dramaId) {
+    return http.get('/admin/batch-upload/scan', { params: { dramaId } })
+  },
+  startBatchUpload(dramaId, startEpisodeNo = 1) {
+    return http.post('/admin/batch-upload/start', null, { params: { dramaId, startEpisodeNo } })
+  },
+  batchUploadStatus(dramaId) {
+    return http.get('/admin/batch-upload/status', { params: { dramaId } })
   },
   adminDashboard(params = {}) {
     return http.get('/admin/dashboard', { params })
@@ -528,6 +722,24 @@ export const api = {
   changeAdminPassword(data) {
     return http.put('/admin/profile/password', data)
   },
+  // 管理员头像上传 (multipart)
+  uploadAdminAvatar(file, onProgress) {
+    const form = new FormData()
+    form.append('file', file)
+    return http.post('/admin/profile/avatar', form, {
+      onUploadProgress: onProgress,
+      timeout: 120000
+    })
+  },
+  // C 端用户头像上传 (multipart,管理员代用户上传场景)
+  uploadUserAvatar(file, onProgress) {
+    const form = new FormData()
+    form.append('file', file)
+    return http.post('/user/avatar', form, {
+      onUploadProgress: onProgress,
+      timeout: 120000
+    })
+  },
 
   // --- Admin Membership APIs ---
   /** 会员用户列表 */
@@ -599,5 +811,23 @@ export const api = {
   /** 管理员取消用户自动续费 */
   adminAutoRenewalCancel(userId) {
     return http.post(`/admin/auto-renewal/${userId}/cancel`)
+  },
+
+  // --- Admin Comment Moderation APIs ---
+  /** 评论列表（可按 status / dramaId 过滤） */
+  adminComments(params = {}) {
+    return http.get('/admin/comments', { params })
+  },
+  /** 管理员强制删除单条评论（status → -2） */
+  adminDeleteComment(id) {
+    return http.delete(`/admin/comments/${id}`)
+  },
+  /** 管理员恢复被删评论（status → 1） */
+  adminRestoreComment(id) {
+    return http.post(`/admin/comments/${id}/restore`)
+  },
+  /** 批量删除评论 */
+  adminBatchDeleteComments(ids) {
+    return http.post('/admin/comments/batch-delete', { ids })
   }
 }

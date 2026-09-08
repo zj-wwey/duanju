@@ -36,6 +36,7 @@ public class SchemaMigrationRunner implements ApplicationRunner {
         ensureCheckinColumns();
         ensureContentTranslationTable();
         ensurePaymentEventLogTable();
+        ensureR2ObjectKeyColumns();
         seedDefaultProducts();
     }
 
@@ -845,6 +846,46 @@ public class SchemaMigrationRunner implements ApplicationRunner {
                   key idx_event_log_status (status, created_at)
                 ) engine=InnoDB default charset=utf8mb4 comment='支付事件日志表 (Webhook去重审计)'
                 """);
+    }
+
+    /**
+     * R2 对象存储 key 列迁移。
+     *
+     * <p>每张表的图片字段都对应一个 object_key 列,用于级联删除 R2 对象:</p>
+     * <ul>
+     *   <li>app_user.avatar_url → avatar_object_key</li>
+     *   <li>admin_user.avatar → avatar_object_key (avatar 列可能不存在,需先 ensure)</li>
+     *   <li>drama.cover_url / horizontal_cover_url / vertical_cover_url → cover_object_key / horizontal_cover_object_key / vertical_cover_object_key</li>
+     *   <li>drama_episode.cover_url → cover_object_key</li>
+     * </ul>
+     */
+    private void ensureR2ObjectKeyColumns() {
+        // admin_user.avatar 列 (旧版本 init.sql 没有此列,先 ensure)
+        addColumnIfMissing("admin_user", "avatar", "varchar(1000) comment '管理员头像URL'");
+        addColumnIfMissing("admin_user", "avatar_object_key",
+                "varchar(255) comment '管理员头像 R2 对象 key (用于级联删除)'");
+
+        // app_user.avatar_object_key
+        if (tableExists("app_user")) {
+            addColumnIfMissing("app_user", "avatar_object_key",
+                    "varchar(255) comment '用户头像 R2 对象 key (用于级联删除)'");
+        }
+
+        // drama 三个封面字段对应的 object_key
+        if (tableExists("drama")) {
+            addColumnIfMissing("drama", "cover_object_key",
+                    "varchar(255) comment '短剧封面 R2 对象 key'");
+            addColumnIfMissing("drama", "horizontal_cover_object_key",
+                    "varchar(255) comment '横版封面 R2 对象 key'");
+            addColumnIfMissing("drama", "vertical_cover_object_key",
+                    "varchar(255) comment '竖版封面 R2 对象 key'");
+        }
+
+        // drama_episode.cover_object_key
+        if (tableExists("drama_episode")) {
+            addColumnIfMissing("drama_episode", "cover_object_key",
+                    "varchar(255) comment '分集封面 R2 对象 key'");
+        }
     }
 
     private void seedDefaultProducts() {

@@ -517,7 +517,7 @@ public class StripePaymentService {
 
     private void assertEnabled() {
         if (!enabled) {
-            throw new IllegalArgumentException("支付渠道 Stripe 暂未开通，请联系管理员或切换其他支付方式");
+            throw new IllegalStateException("支付渠道 Stripe 暂未开通，请联系管理员或切换其他支付方式");
         }
     }
 

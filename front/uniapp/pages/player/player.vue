@@ -6,83 +6,189 @@
     </view>
 
     <template v-else>
-      <view class="screen">
-        <view v-if="isDownloading" class="downloading-mask">
-          <view class="downloading-spinner"></view>
-          <view class="downloading-text">{{ t('downloadingVideo') }} {{ downloadProgress }}%</view>
-          <view class="downloading-bar">
-            <view class="downloading-bar-fill" :style="{ width: downloadProgress + '%' }"></view>
+      <view class="player-wrap" :style="{ height: windowHeight + 'px' }">
+      <swiper
+        v-if="episodes.length"
+        class="feed-swiper"
+        :class="{ 'is-landscape': isLandscape }"
+        :style="{ height: videoAreaHeight + 'px' }"
+        :current="feedIndex"
+        :vertical="true"
+        :indicator-dots="false"
+        :autoplay="false"
+        :duration="250"
+        @change="onFeedChange"
+        @touchstart="onSwiperTouchStart"
+        @touchmove="onSwiperTouchMove"
+      >
+        <swiper-item v-for="(ep, index) in episodes" :key="ep.id">
+          <view class="screen" :style="{ height: videoAreaHeight + 'px' }">
+            <video
+              v-if="ep.id === activeId && ep.playbackUrl && !isDownloading && !videoLoadError && !showSheet"
+              id="mainVideo"
+              class="video"
+              :src="ep.playbackUrl"
+              :poster="ep.coverUrl || coverOf(drama)"
+              :autoplay="true"
+              :controls="false"
+              :show-center-play-btn="false"
+              :show-fullscreen-btn="false"
+              :show-progress="false"
+              :show-play-btn="false"
+              object-fit="contain"
+              @timeupdate="timeupdate"
+              @ended="ended"
+              @error="videoError"
+              @play="onVideoPlay"
+              @pause="onVideoPause"
+            >
+              <cover-view class="video-tap-area" @tap="togglePlayback"></cover-view>
+              <!-- 播放/暂停反馈图标 -->
+              <cover-view v-if="ep.id === activeId && playHint" class="video-play-hint">
+                <cover-image
+                  class="video-play-hint-img"
+                  :src="playHint === 'pause' ? '/static/images/playhint/pause.png' : '/static/images/playhint/play.png'"
+                />
+              </cover-view>
+              <!-- #ifndef APP-PLUS -->
+              <cover-view
+                class="video-progress-bar"
+                @touchstart="onProgressTouchStart"
+                @touchmove="onProgressTouchMove"
+                @touchend="onProgressTouchEnd"
+              >
+                <cover-view class="video-progress-time">{{ formatCurrentTime }}</cover-view>
+                <cover-view class="video-progress-track"></cover-view>
+                <cover-view class="video-progress-fill" :style="{ width: progressPercent + '%' }"></cover-view>
+                <cover-view class="video-progress-thumb" :style="{ left: progressPercent + '%' }"></cover-view>
+                <cover-view class="video-progress-time video-progress-time-right">{{ formatTotalTime }}</cover-view>
+              </cover-view>
+              <!-- #endif -->
+            </video>
+
+            <view v-else-if="ep.id === activeId && ep.videoUrl && videoLoadError" class="locked-screen" @click="retryCurrent">
+              <image class="locked-cover" :src="ep.coverUrl || coverOf(drama)" mode="aspectFill" />
+              <view class="locked-mask">
+                <view class="locked-title">{{ videoLoadError }}</view>
+                <button class="primary-btn" @click.stop="retryCurrent">{{ t('retry') }}</button>
+              </view>
+            </view>
+
+            <view v-else-if="ep.id === activeId && !ep.videoUrl" class="locked-screen">
+              <image class="locked-cover" :src="ep.coverUrl || coverOf(drama)" mode="aspectFill" />
+              <view class="locked-mask">
+                <view class="locked-title">{{ t('premiumEpisode') }}</view>
+                <view class="locked-desc">{{ t('unlockSubtitle', { count: ep.pricePoints }) }}</view>
+                <button class="primary-btn" @click="unlockEpisode">{{ t('unlockWithCredits') }}</button>
+                <button v-if="wholePrice" class="ghost-btn" @click="unlockWhole">{{ t('unlockDrama') }} · {{ wholePrice }}</button>
+                <button class="plain-btn" @click="goRecharge">{{ t('rechargeCredits') }}</button>
+              </view>
+            </view>
+
+            <view v-else class="locked-screen" @click="jumpTo(index)">
+              <image class="locked-cover" :src="ep.coverUrl || coverOf(drama)" mode="aspectFill" />
+            </view>
+
+            <view v-if="isDownloading" class="downloading-mask">
+              <view class="downloading-spinner"></view>
+              <view class="downloading-text">{{ t('downloadingVideo') }} {{ downloadProgress }}%</view>
+              <view class="downloading-bar">
+                <view class="downloading-bar-fill" :style="{ width: downloadProgress + '%' }"></view>
+              </view>
+            </view>
           </view>
-        </view>
+        </swiper-item>
+      </swiper>
 
-        <video
-          v-if="activeEpisode && activeEpisode.playbackUrl && !isDownloading"
-          id="mainVideo"
-          class="video"
-          :src="activeEpisode.playbackUrl"
-          :poster="activeEpisode.coverUrl || coverOf(drama)"
-          :autoplay="true"
-          :controls="false"
-          :show-center-play-btn="false"
-          :show-fullscreen-btn="false"
-          :show-progress="false"
-          :show-play-btn="false"
-          object-fit="cover"
-          @timeupdate="timeupdate"
-          @ended="ended"
-          @error="videoError"
-          @play="onVideoPlay"
-          @pause="onVideoPause"
-        >
-          <cover-view class="video-tap-area" @tap="togglePlayback"></cover-view>
-        </video>
+      <view v-else class="locked-screen">
+        <image class="locked-cover" :src="coverOf(drama)" mode="aspectFill" />
+      </view>
 
-        <view v-else-if="activeEpisode && activeEpisode.videoUrl && !isDownloading && videoLoadError" class="locked-screen">
-          <image class="locked-cover" :src="activeEpisode.coverUrl || coverOf(drama)" mode="aspectFill" />
-          <view class="locked-mask">
-            <view class="locked-title">{{ videoLoadError }}</view>
-            <view class="locked-desc">{{ activeEpisode ? (activeEpisode.playbackUrl || activeEpisode.videoUrl) : '' }}</view>
-            <button class="primary-btn" @click="playActiveEpisode">{{ t('retry') }}</button>
+      <!-- #ifndef APP-PLUS -->
+      <view class="back-btn" @click="back">←</view>
+
+      <view class="side-actions" :class="{ 'is-landscape': isLandscape }">
+        <view class="action" @click="toggleFavorite">
+          <view class="action-icon-wrap is-favorite" :class="{ active: favorite }">
+            <u-icon :name="favorite ? 'heart-fill' : 'heart'" size="42" color="#ffffff"></u-icon>
           </view>
+          <text class="action-label">{{ favorite ? t('favorited') : t('favorite') }}</text>
         </view>
-
-        <view v-else-if="activeEpisode && !activeEpisode.videoUrl" class="locked-screen">
-          <image class="locked-cover" :src="activeEpisode ? (activeEpisode.coverUrl || coverOf(drama)) : coverOf(drama)" mode="aspectFill" />
-          <view class="locked-mask">
-            <view class="locked-title">{{ t('premiumEpisode') }}</view>
-            <view class="locked-desc">{{ t('unlockSubtitle', { count: activeEpisode ? activeEpisode.pricePoints : 0 }) }}</view>
-            <button class="primary-btn" @click="unlockEpisode">{{ t('unlockWithCredits') }}</button>
-            <button v-if="wholePrice" class="ghost-btn" @click="unlockWhole">{{ t('unlockDrama') }} · {{ wholePrice }}</button>
-            <button class="plain-btn" @click="goRecharge">{{ t('rechargeCredits') }}</button>
+        <view class="action" @click="toggleLike">
+          <view class="action-icon-wrap is-like" :class="{ active: like }">
+            <u-icon :name="like ? 'thumb-up-fill' : 'thumb-up'" size="42" color="#ffffff"></u-icon>
           </view>
+          <text class="action-label action-num">{{ formatCount(likeCount) }}</text>
         </view>
-
-        <view v-else class="locked-screen">
-          <image class="locked-cover" :src="coverOf(drama)" mode="aspectFill" />
+        <view class="action" @click="openComments">
+          <view class="action-icon-wrap is-comment">
+            <u-icon name="chat" size="42" color="#ffffff"></u-icon>
+          </view>
+          <text class="action-label action-num">{{ commentCount > 0 ? formatCount(commentCount) : t('comment') }}</text>
+        </view>
+        <view class="action" @click="share">
+          <view class="action-icon-wrap is-share">
+            <u-icon name="share-fill" size="42" color="#ffffff"></u-icon>
+          </view>
+          <text class="action-label">{{ t('share') }}</text>
+        </view>
+        <view class="action" @click="goDetail">
+          <view class="action-icon-wrap is-detail">
+            <u-icon name="list-dot" size="42" color="#ffffff"></u-icon>
+          </view>
+          <text class="action-label">{{ t('details') }}</text>
         </view>
       </view>
 
-      <!-- 选集弹窗 -->
-      <u-popup v-model="showEpisodePanel" mode="bottom" height="560rpx" border-radius="20" :closeable="true">
-        <view class="panel">
-          <view class="panel-title">{{ t('episodeTitle', { num: activeEpisode ? activeEpisode.episodeNo : 1 }) }}</view>
-          <scroll-view scroll-y class="panel-scroll">
-            <view
-              v-for="item in episodes"
-              :key="item.id"
-              class="panel-item"
-              :class="{ active: activeEpisode && item.id === activeEpisode.id }"
-              @click="selectEpisode(item)"
-            >
-              <image :src="item.coverUrl || coverOf(drama)" mode="aspectFill" />
-              <view class="panel-item-copy">
-                <view class="panel-item-title">{{ t('episodeTitle', { num: item.episodeNo }) }} · {{ item.title }}</view>
-                <view class="panel-item-sub">{{ item.videoUrl || item.unlocked ? t('unlocked') : item.pricePoints + ' ' + t('credits') }}</view>
-              </view>
-            </view>
-          </scroll-view>
+      <view class="bottom-info" v-if="!isLandscape">
+        <view class="info-author" v-if="dramaAuthor">{{ dramaAuthor }}</view>
+        <view class="info-title">{{ drama ? drama.title : '' }}</view>
+        <view class="info-desc" v-if="drama && drama.description">{{ drama.description }}</view>
+        <view class="episode-pill" @click.stop="openSheet">
+          {{ t('collectionEntry', { num: activeEpisode ? activeEpisode.episodeNo : 1, total: episodes.length }) }}
         </view>
-      </u-popup>
+      </view>
+      <view class="landscape-pill" v-if="isLandscape" @click="openSheet">
+        {{ t('collectionEntry', { num: activeEpisode ? activeEpisode.episodeNo : 1, total: episodes.length }) }}
+      </view>
+      <!-- #endif -->
+
+      <episode-sheet
+        :show.sync="showSheet"
+        :drama="drama"
+        :episodes="episodes"
+        :active-id="activeId"
+        :dramas="seriesDramas"
+        @select="selectEpisode"
+        @switch-drama="switchDrama"
+      />
+
+      <!-- 内嵌式评论区（跟首页一样：视频压缩 + 内嵌评论区，不用 u-popup 盖在 video 上） -->
+      <view v-show="showComments" class="comments-panel" @click="blurCommentInput">
+        <view class="comments-panel-header">
+          <text class="comments-panel-title">{{ t('commentTitle') }}<text v-if="commentsTotal > 0" class="comments-total-num">{{ commentsTotal }}</text></text>
+          <text class="comments-panel-close" @click.stop="closeComments">⌄</text>
+        </view>
+        <scroll-view scroll-y class="comments-scroll" @click.stop="blurCommentInput">
+          <view v-if="commentsLoading" class="comments-empty">{{ t('loading') }}</view>
+          <view v-else-if="!comments.length" class="comments-empty">{{ t('commentEmpty') }}</view>
+          <view v-else class="comment-item" v-for="c in comments" :key="c.id">
+            <image v-if="c.avatar_url" class="comment-avatar" :src="c.avatar_url" mode="aspectFill" />
+            <view v-else class="comment-avatar comment-avatar-fallback"></view>
+            <view class="comment-body">
+              <view class="comment-nick">{{ c.nickname || '匿名' }}</view>
+              <view class="comment-text">{{ c.content }}</view>
+            </view>
+            <text v-if="myUserId && String(c.user_id) === String(myUserId)" class="comment-del" @click.stop="removeComment(c)">{{ t('commentDelete') }}</text>
+          </view>
+        </scroll-view>
+        <view class="comments-input-row" @click.stop>
+          <input class="comments-input" v-model="commentText" :placeholder="t('commentPlaceholder')" maxlength="500" confirm-type="send" @confirm="submitComment" @click.stop />
+          <button class="comments-send" :disabled="commentSubmitting || !commentText.trim()" @click.stop="submitComment">{{ t('commentSend') }}</button>
+        </view>
+      </view>
+
+      </view><!-- /player-wrap -->
     </template>
   </view>
 </template>
@@ -99,12 +205,15 @@ export default {
       dramaId: null,
       episodeId: null,
       drama: null,
+      seriesDramas: [],
       episodes: [],
-      activeEpisode: null,
+      feedIndex: 0,
+      showSheet: false,
       pointBalance: 0,
       autoNext: true,
       progressSeconds: 0,
       progressPercent: 0,
+      draggingProgress: false,
       videoDuration: 0,
       lastSavedSecond: -1,
       lastRewardedMinute: 0,
@@ -115,16 +224,53 @@ export default {
       playRetryCount: 0,
       MAX_PLAY_RETRY: 1,
       feedPaused: false,
-      showEpisodePanel: false,
+      playHint: null,
       favorite: false,
+      like: false,
+      likeCount: 0,
+      commentCount: 0,
+      showComments: false,
+      comments: [],
+      commentsTotal: 0,
+      commentsLoading: false,
+      commentSubmitting: false,
+      commentText: '',
+      commentsDramaId: null,
+      myUserId: null,
       isDownloading: false,
       downloadProgress: 0,
-      downloadedFilePath: ''
+      downloadedFilePath: '',
+      isLandscape: false,
+      windowHeight: 0,
+      windowWidth: 0,
+      boundaryHintTimer: null,
     }
   },
   computed: {
+    activeId() {
+      return this.activeEpisode ? this.activeEpisode.id : null
+    },
+    activeEpisode() {
+      return this.episodes[this.feedIndex] || null
+    },
     wholePrice() {
       return Number(this.drama?.wholePricePoints || this.drama?.whole_price_points || 0)
+    },
+    dramaAuthor() {
+      return this.drama ? (this.drama.author_name || this.drama.authorName || '') : ''
+    },
+    videoAreaHeight() {
+      // 评论区展开时视频压缩到 58%，选集弹窗时视频也压缩
+      if (this.showComments || this.showSheet) {
+        return Math.round(this.windowHeight * 0.58)
+      }
+      return this.windowHeight
+    },
+    formatCurrentTime() {
+      return this.formatSec(this.progressSeconds)
+    },
+    formatTotalTime() {
+      return this.videoDuration ? this.formatSec(this.videoDuration) : '0:00'
     }
   },
   onLoad(options) {
@@ -133,13 +279,19 @@ export default {
     this.load()
   },
   onShow() {
+    console.log('[PLAYER] onShow called')
     this.locale = getLocale()
     this.loadPoints()
     uni.$on('playerOverlayEvent', this.handleOverlayEvent)
     this.showOverlay()
+    this.updateOrientation()
+    uni.onWindowResize(this.handleResize)
   },
   onHide() {
+    console.log('[PLAYER] onHide called')
+    this.persistFeedResume()
     uni.$off('playerOverlayEvent', this.handleOverlayEvent)
+    uni.offWindowResize(this.handleResize)
     this.hideOverlay()
   },
   onUnload() {
@@ -151,55 +303,121 @@ export default {
       this.downloadedFilePath = ''
     }
     uni.$off('playerOverlayEvent', this.handleOverlayEvent)
+    uni.offWindowResize(this.handleResize)
     this.hideOverlay()
   },
+  watch: {
+    showSheet(val) {
+      console.log('[PLAYER] watch showSheet:', val)
+      if (val) {
+        this.hideOverlay()
+      } else {
+        this.showOverlay()
+        this.$nextTick(() => {
+          if (this.activeEpisode && this.activeEpisode.playbackUrl) {
+            try {
+              const ctx = uni.createVideoContext('mainVideo', this)
+              if (ctx && ctx.play) ctx.play()
+            } catch (_) {}
+          }
+        })
+      }
+    },
+    showComments(val) {
+      console.log('[PLAYER] watch showComments:', val)
+      if (val) {
+        this.hideOverlay()
+      } else if (!this.showSheet) {
+        this.showOverlay()
+        // 评论关闭后恢复播放
+        this.$nextTick(() => {
+          if (this.activeEpisode && this.activeEpisode.playbackUrl) {
+            try {
+              const ctx = uni.createVideoContext('mainVideo', this)
+              if (ctx && ctx.play) ctx.play()
+            } catch (_) {}
+          }
+        })
+      }
+    }
+  },
   methods: {
+    formatSec(s) {
+      s = s || 0
+      const m = Math.floor(s / 60), sec = Math.floor(s % 60)
+      return m + ':' + (sec < 10 ? '0' : '') + sec
+    },
+    toBool(value) {
+      if (value === undefined || value === null) return false
+      if (typeof value === 'boolean') return value
+      if (typeof value === 'number') return value !== 0
+      if (typeof value === 'string') {
+        const lowered = value.toLowerCase().trim()
+        return lowered === 'true' || lowered === '1' || lowered === 'yes'
+      }
+      return !!value
+    },
     async load() {
       this.loading = true
       try {
-        const [drama, settings] = await Promise.all([
+        const [drama, settings, dramas] = await Promise.all([
           api.drama(this.dramaId),
-          uni.getStorageSync('token') ? api.getSettings().catch(() => null) : Promise.resolve(null)
+          uni.getStorageSync('token') ? api.getSettings().catch(() => null) : Promise.resolve(null),
+          api.dramas().catch(() => [])
         ])
         this.drama = drama
-        this.favorite = !!drama.favorite
+        this.favorite = this.toBool(drama.favorite)
+        this.like = this.toBool(drama.liked)
+        this.likeCount = Number(drama.like_count || drama.likeCount || 0)
+        this.seriesDramas = (dramas || []).filter(item => String(item.id) !== String(this.dramaId))
         this.episodes = (drama.episodes || []).map((item, index) => this.normalizeEpisode(item, index))
-        this.activeEpisode = this.episodes.find(item => String(item.id) === String(this.episodeId)) || this.episodes[0] || null
+        const targetIndex = this.episodes.findIndex(item => String(item.id) === String(this.episodeId))
+        this.feedIndex = targetIndex >= 0 ? targetIndex : 0
         if (settings) this.autoNext = settings.autoNext !== false && settings.auto_next !== false
         await this.loadPoints()
       } catch (err) {
         uni.showToast({ title: err.message, icon: 'none' })
       } finally {
         this.loading = false
-        this.$nextTick(() => this.playActiveEpisode())
-        this.sendOverlayUpdate()
+        this.$nextTick(() => {
+          this.playActiveEpisode()
+          this.sendOverlayUpdate()
+        })
       }
     },
     sendOverlayUpdate() {
       uni.$emit('updatePlayerOverlay', {
-        favorite: this.favorite,
-        favoriteText: this.favorite ? this.t('saved') : this.t('save'),
-        likeText: this.t('like'),
-        commentText: this.t('comment'),
+        favoriteActive: this.favorite === true,
+        favoriteText: this.favorite === true ? this.t('favorited') : this.t('favorite'),
+        likeActive: this.like === true,
+        likeText: this.likeCount > 0 ? this.formatCount(this.likeCount) : this.t('like'),
+        commentText: this.commentCount > 0 ? this.t('comment') + ' ' + this.formatCount(this.commentCount) : this.t('comment'),
         shareText: this.t('share'),
         detailsText: this.t('details'),
-        episodeBrowseText: this.t('episodeBrowse', { num: this.activeEpisode ? this.activeEpisode.episodeNo : 1, total: this.episodes.length }),
+        episodeBrowseText: this.t('collectionEntry', { num: this.activeEpisode ? this.activeEpisode.episodeNo : 1, total: this.episodes.length }),
         dramaTitle: this.drama ? this.drama.title : '',
         episodeTitle: this.activeEpisode ? this.activeEpisode.title : '',
         episodeNo: this.activeEpisode ? this.activeEpisode.episodeNo : 1,
         total: this.episodes.length,
-        progressPercent: this.progressPercent || 0
+        // 进度条数据
+        progressPercent: this.progressPercent,
+        progressCurrent: this.formatSec(this.progressSeconds),
+        progressTotal: this.videoDuration ? this.formatSec(this.videoDuration) : '0:00'
       })
     },
     showOverlay() {
       const ov = uni.getSubNVueById('playerOverlay')
+      console.log('[PLAYER] showOverlay, subNVue exists:', !!ov)
       if (ov) {
         ov.show()
         this.sendOverlayUpdate()
+      } else {
+        console.warn('[PLAYER] showOverlay FAILED: subNVue playerOverlay not found')
       }
     },
     hideOverlay() {
       const ov = uni.getSubNVueById('playerOverlay')
+      console.log('[PLAYER] hideOverlay, subNVue exists:', !!ov)
       if (ov) ov.hide()
     },
     handleOverlayEvent(e) {
@@ -211,8 +429,26 @@ export default {
         case 'comment': this.openComments(); break
         case 'share': this.share(); break
         case 'details': this.goDetail(); break
-        case 'episode': this.toggleEpisodePanel(); break
+        case 'episode': this.openSheet(); break
         case 'tap': this.togglePlayback(); break
+        case 'seek': {
+          const percent = e.data ? e.data.percent : 0
+          this.draggingProgress = true
+          this.progressPercent = percent
+          const dur = this.videoDuration
+          if (dur > 0) {
+            this.progressSeconds = Math.floor(percent / 100 * dur)
+          }
+          break
+        }
+        case 'seekEnd': {
+          this.draggingProgress = false
+          const ctx = uni.createVideoContext('mainVideo', this)
+          if (ctx && ctx.seek) ctx.seek(this.progressSeconds)
+          // seek 完成后同步一次 overlay 显示
+          this.sendOverlayUpdate()
+          break
+        }
       }
     },
     normalizeEpisode(item, index) {
@@ -238,42 +474,124 @@ export default {
         this.pointBalance = Number(data?.user?.points || data?.points || 0)
       } catch (_) {}
     },
-    openEpisode(item) {
-      this.saveHistory()
-      this.activeEpisode = item
-      this.episodeId = item.id
+    // swiper 滑动切换：上滑下一集 / 下滑上一集
+    onFeedChange(e) {
+      const newIndex = Number(e.detail.current)
+      if (newIndex === this.feedIndex) return
+      if (this.progressSeconds > 0) this.saveHistory()
+      this.feedIndex = newIndex
+      this.resetProgressState()
+      this.$nextTick(() => {
+        this.playActiveEpisode()
+        this.sendOverlayUpdate()
+      })
+    },
+    onSwiperTouchStart(e) {
+      this._touchStartY = e.touches && e.touches[0] ? e.touches[0].clientY : 0
+    },
+    onSwiperTouchMove(e) {
+      if (this.feedIndex === 0 && this._touchStartY != null) {
+        const deltaY = e.touches[0].clientY - this._touchStartY
+        // 向下滑（deltaY > 0）且幅度超过 50px，在第一集边界提示
+        if (deltaY > 50) {
+          this.showBoundaryHint(this.t('firstEpisode'))
+          this._touchStartY = null // 防止连续触发
+        }
+      } else if (this.feedIndex === this.episodes.length - 1 && this._touchStartY != null) {
+        const deltaY = e.touches[0].clientY - this._touchStartY
+        // 向上滑（deltaY < 0）且幅度超过 50px，在最后一集边界提示
+        if (deltaY < -50) {
+          this.showBoundaryHint(this.t('lastEpisode'))
+          this._touchStartY = null
+        }
+      }
+    },
+    showBoundaryHint(msg) {
+      if (this.boundaryHintTimer) return
+      uni.showToast({ title: msg, icon: 'none', duration: 1200 })
+      this.boundaryHintTimer = setTimeout(() => { this.boundaryHintTimer = null }, 1500)
+    },
+    // 程序化切集（选集/自动连播）
+    jumpTo(index) {
+      if (index < 0 || index >= this.episodes.length || index === this.feedIndex) return
+      if (this.progressSeconds > 0) this.saveHistory()
+      this.feedIndex = index
+      this.resetProgressState()
+      this.$nextTick(() => {
+        this.playActiveEpisode()
+        this.sendOverlayUpdate()
+      })
+    },
+    selectEpisode(item) {
+      this.showSheet = false
+      const index = this.episodes.findIndex(ep => String(ep.id) === String(item.id))
+      if (index >= 0) this.jumpTo(index)
+    },
+    async switchDrama(id) {
+      if (!id || (this.drama && String(this.drama.id) === String(id))) return
+      this.showSheet = false
+      this.dramaId = id
+      this.episodeId = null
+      await this.load()
+    },
+    resetProgressState() {
       this.progressSeconds = 0
       this.progressPercent = 0
+      this.videoDuration = 0
       this.lastSavedSecond = -1
       this.lastRewardedMinute = 0
       this.videoLoadError = ''
       this.playRetryCount = 0
       this.feedPaused = false
-      if (!item.videoUrl) return
-      this.playActiveEpisode()
     },
     async playActiveEpisode() {
       const item = this.activeEpisode
       if (!item || !item.videoUrl) return
       const episodeId = item.id
       this.videoLoadError = ''
+      // 已有预取地址则直接复用
+      if (item.playbackUrl) {
+        this.startPlayback(item)
+        this.prefetchNext()
+        return
+      }
       try {
         const source = await resolveEpisodeSource(item.id, item.videoUrl, api)
         if (!this.activeEpisode || this.activeEpisode.id !== episodeId) return
         this.playRetryCount = 0
         this.$set(this.activeEpisode, 'playbackUrl', source)
-        this.$nextTick(() => {
-          uni.createVideoContext('mainVideo', this).play()
-        })
+        this.startPlayback(item)
+        this.prefetchNext()
       } catch (err) {
         if (this.activeEpisode && this.activeEpisode.id === episodeId) {
           this.videoLoadError = err.message || this.t('videoLoadFailed')
         }
       }
     },
+    startPlayback(item) {
+      this.$nextTick(() => {
+        uni.createVideoContext('mainVideo', this).play()
+      })
+    },
+    // 预加载下一集播放地址，切换时无缝续播
+    prefetchNext() {
+      const next = this.episodes[this.feedIndex + 1]
+      if (!next || !next.videoUrl || next.playbackUrl) return
+      resolveEpisodeSource(next.id, next.videoUrl, api).then(source => {
+        if (next.videoUrl) this.$set(next, 'playbackUrl', source)
+      }).catch(() => {})
+    },
+    retryCurrent() {
+      const item = this.activeEpisode
+      if (!item) return
+      this.videoLoadError = ''
+      this.playRetryCount = 0
+      this.$set(item, 'playbackUrl', '')
+      this.playActiveEpisode()
+    },
     videoError(e) {
       if (!this.activeEpisode) return
-      this.videoLoadError = '视频加载失败，请点击重试'
+      this.videoLoadError = this.t('videoLoadFailed')
       this.$set(this.activeEpisode, 'playbackUrl', '')
     },
     async unlockEpisode() {
@@ -282,7 +600,7 @@ export default {
         await api.unlock(this.activeEpisode.id)
         uni.showToast({ title: this.t('unlockedToast'), icon: 'none' })
         notifyDataChanged(APP_DATA_EVENTS.points)
-        await this.load()
+        await this.reloadEpisodes()
       } catch (err) {
         uni.showToast({ title: err.message, icon: 'none' })
         this.offerRecharge(err.message)
@@ -294,13 +612,31 @@ export default {
         await api.unlockDrama(this.dramaId)
         uni.showToast({ title: this.t('unlockedToast'), icon: 'none' })
         notifyDataChanged(APP_DATA_EVENTS.points)
-        await this.load()
+        await this.reloadEpisodes()
       } catch (err) {
         uni.showToast({ title: err.message, icon: 'none' })
         this.offerRecharge(err.message)
       }
     },
+    // 解锁后仅刷新集数数据，保持当前播放位置
+    async reloadEpisodes() {
+      try {
+        const drama = await api.drama(this.dramaId)
+        this.drama = drama
+        this.favorite = this.toBool(drama.favorite)
+        this.like = this.toBool(drama.liked)
+        this.likeCount = Number(drama.like_count || drama.likeCount || 0)
+        const currentId = this.activeId
+        this.episodes = (drama.episodes || []).map((item, index) => this.normalizeEpisode(item, index))
+        const targetIndex = this.episodes.findIndex(item => String(item.id) === String(currentId))
+        this.feedIndex = targetIndex >= 0 ? targetIndex : 0
+        this.$nextTick(() => this.playActiveEpisode())
+      } catch (err) {
+        uni.showToast({ title: err.message, icon: 'none' })
+      }
+    },
     timeupdate(e) {
+      if (this.draggingProgress) return
       this.progressSeconds = Math.floor(e.detail.currentTime || 0)
       const duration = e.detail.duration || this.videoDuration || 0
       if (duration > 0) {
@@ -316,7 +652,35 @@ export default {
           this.loadPoints()
         }).catch(() => {})
       }
-      if (this.progressSeconds % 2 === 0) this.sendOverlayUpdate()
+      // 每次 timeupdate 都同步进度给 nvue overlay（约 250ms 一次）
+      this.sendOverlayUpdate()
+    },
+    onProgressTouchStart(e) {
+      this.draggingProgress = true
+      this.seekByTouch(e)
+    },
+    onProgressTouchMove(e) {
+      if (this.draggingProgress) this.seekByTouch(e)
+    },
+    onProgressTouchEnd() {
+      this.draggingProgress = false
+    },
+    seekByTouch(e) {
+      const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0])
+      if (!touch) return
+      const sys = uni.getSystemInfoSync()
+      const pad = 130 * sys.windowWidth / 750
+      const usable = sys.windowWidth - pad * 2
+      const raw = touch.clientX - pad
+      const percent = Math.max(0, Math.min(100, (raw / usable) * 100))
+      this.progressPercent = percent
+      const dur = this.videoDuration
+      if (dur > 0) {
+        const seconds = Math.floor(percent / 100 * dur)
+        this.progressSeconds = seconds
+        const ctx = uni.createVideoContext('mainVideo', this)
+        if (ctx && ctx.seek) ctx.seek(seconds)
+      }
     },
     ended() {
       this.saveHistory()
@@ -329,9 +693,7 @@ export default {
         }).catch(() => {})
       }
       if (!this.autoNext) return
-      const index = this.episodes.findIndex(item => this.activeEpisode && item.id === this.activeEpisode.id)
-      const next = this.episodes[index + 1]
-      if (next) this.openEpisode(next)
+      if (this.feedIndex < this.episodes.length - 1) this.jumpTo(this.feedIndex + 1)
     },
     saveHistory() {
       if (!uni.getStorageSync('token') || !this.dramaId || !this.activeEpisode) return
@@ -354,23 +716,29 @@ export default {
       if (this.feedPaused) {
         context.play()
         this.feedPaused = false
+        this._showPlayHint('pause')
       } else {
         context.pause()
         this.feedPaused = true
+        this._showPlayHint('play')
       }
     },
-    toggleEpisodePanel() {
-      this.showEpisodePanel = !this.showEpisodePanel
+    _showPlayHint(type) {
+      this.playHint = type
+      if (this._playHintTimer) clearTimeout(this._playHintTimer)
+      this._playHintTimer = setTimeout(() => {
+        this.playHint = null
+        this._playHintTimer = null
+      }, 1200)
     },
-    selectEpisode(item) {
-      this.showEpisodePanel = false
-      this.openEpisode(item)
+    openSheet() {
+      this.showSheet = true
     },
     async toggleFavorite() {
       if (!this.ensureLogin()) return
       try {
         const res = await api.toggleFavorite(this.dramaId)
-        this.favorite = res.favorite
+        this.favorite = this.toBool(res.favorite)
         notifyDataChanged(APP_DATA_EVENTS.favorite, { dramaId: this.dramaId, favorite: this.favorite })
         this.sendOverlayUpdate()
       } catch (err) {
@@ -379,11 +747,85 @@ export default {
     },
     toggleLike() {
       if (!this.ensureLogin()) return
-      uni.showToast({ title: this.t('likePending'), icon: 'none' })
+      if (!this.drama) return
+      api.toggleLike(this.drama.id).then(res => {
+        this.like = this.toBool(res.liked)
+        this.likeCount = Number(res.likeCount || 0)
+        this.sendOverlayUpdate()
+      }).catch(err => {
+        uni.showToast({ title: err.message, icon: 'none' })
+      })
     },
     openComments() {
+      this.showComments = true
+      this.fetchMyUserId()
+      if (String(this.commentsDramaId || '') !== String(this.drama ? this.drama.id : '')) {
+        this.comments = []
+        this.commentsTotal = 0
+        this.loadComments()
+      }
+    },
+    loadComments() {
+      if (!this.drama) return
+      this.commentsDramaId = this.drama.id
+      this.commentsLoading = true
+      api.dramaComments(this.drama.id).then(data => {
+        this.comments = (data && data.records) || []
+        this.commentsTotal = Number((data && data.total) || 0)
+        this.commentCount = this.commentsTotal
+      }).catch(err => {
+        uni.showToast({ title: err.message, icon: 'none' })
+      }).finally(() => {
+        this.commentsLoading = false
+      })
+    },
+    fetchMyUserId() {
+      if (!uni.getStorageSync('token') || this.myUserId) return
+      api.me().then(me => {
+        this.myUserId = me && me.id ? me.id : null
+      }).catch(() => {})
+    },
+    closeComments() {
+      this.showComments = false
+    },
+    blurCommentInput() {
+      // #ifdef APP-PLUS
+      uni.hideKeyboard()
+      // #endif
+    },
+    submitComment() {
+      const text = (this.commentText || '').trim()
+      if (!text || this.commentSubmitting) return
       if (!this.ensureLogin()) return
-      uni.showToast({ title: this.t('commentPending'), icon: 'none' })
+      if (!this.drama) return
+      this.commentSubmitting = true
+      api.addComment(this.drama.id, text, this.activeEpisode ? this.activeEpisode.id : null).then(comment => {
+        this.comments.unshift(comment)
+        this.commentsTotal += 1
+        this.commentCount = this.commentsTotal
+        this.commentText = ''
+        uni.showToast({ title: this.t('commentAdded'), icon: 'none' })
+      }).catch(err => {
+        uni.showToast({ title: err.message, icon: 'none' })
+      }).finally(() => {
+        this.commentSubmitting = false
+      })
+    },
+    removeComment(comment) {
+      api.deleteComment(comment.id).then(() => {
+        this.comments = this.comments.filter(c => c.id !== comment.id)
+        this.commentsTotal = Math.max(0, this.commentsTotal - 1)
+        this.commentCount = this.commentsTotal
+        uni.showToast({ title: this.t('commentDeleted'), icon: 'none' })
+      }).catch(err => {
+        uni.showToast({ title: err.message, icon: 'none' })
+      })
+    },
+    formatCount(num) {
+      const n = Number(num || 0)
+      if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + 'w'
+      if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+      return String(n)
     },
     share() {
       const item = this.activeEpisode
@@ -396,6 +838,13 @@ export default {
     },
     goDetail() {
       if (!this.drama) return
+      // 上一页就是详情时直接返回，避免 播放↔详情 反复进出导致页面栈堆积
+      const pages = getCurrentPages()
+      const prev = pages && pages.length >= 2 ? pages[pages.length - 2] : null
+      if (prev && String(prev.route || '').indexOf('detail') !== -1) {
+        uni.navigateBack()
+        return
+      }
       uni.navigateTo({ url: '/pages/detail/detail?id=' + this.dramaId })
     },
     offerRecharge(message) {
@@ -415,7 +864,48 @@ export default {
       return item?.coverUrl || item?.cover_url || ''
     },
     back() {
-      uni.navigateBack()
+      this.persistFeedResume()
+      const pages = getCurrentPages()
+      // 无上级页面（如 H5 直接刷新进入播放页）：回首页
+      if (!pages || pages.length <= 1) {
+        uni.reLaunch({ url: '/pages/index/index' })
+        return
+      }
+      // 栈顶往下连续的播放页一次性退出（播放↔详情反复进出会堆栈，一次 back 即可离开）
+      let delta = 1
+      for (let i = pages.length - 2; i >= 0; i--) {
+        const route = String(pages[i].route || '')
+        if (route.indexOf('player') !== -1) delta++
+        else break
+      }
+      uni.navigateBack({ delta: Math.min(delta, pages.length - 1) })
+    },
+    persistFeedResume() {
+      if (!this.dramaId || !this.activeEpisode) return
+      try {
+        uni.setStorageSync('feed:resume', {
+          dramaId: String(this.dramaId),
+          episodeId: String(this.activeEpisode.id),
+          episodeNo: this.activeEpisode.episodeNo || 0,
+          progressSeconds: this.progressSeconds || 0,
+          savedAt: Date.now()
+        })
+      } catch (_) {}
+    },
+    updateOrientation() {
+      const sys = uni.getSystemInfoSync()
+      this.windowWidth = sys.windowWidth || sys.screenWidth || 375
+      this.windowHeight = sys.windowHeight || sys.screenHeight || 667
+      this.isLandscape = this.windowWidth > this.windowHeight
+    },
+    handleResize() {
+      this.updateOrientation()
+      this.$nextTick(() => {
+        // 横竖屏切换后若视频在播放则恢复播放
+        if (!this.feedPaused) {
+          try { uni.createVideoContext('mainVideo', this).play() } catch (_) {}
+        }
+      })
     },
     t(key, params) {
       return translate(key, params, this.locale)
@@ -428,32 +918,11 @@ export default {
 page,
 .page {
   width: 100%;
-  height: 100vh;
+  height: 100%;
   background: #050609;
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", "Segoe UI", sans-serif;
   overflow: hidden;
-}
-
-.back-btn {
-  position: fixed;
-  top: calc(12rpx + env(safe-area-inset-top));
-  left: 16rpx;
-  z-index: 20;
-  width: 56rpx;
-  height: 56rpx;
-  line-height: 50rpx;
-  text-align: center;
-  font-size: 48rpx;
-  font-weight: 300;
-  color: rgba(255, 255, 255, 0.8);
-  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.5);
-  transition: transform 0.18s ease;
-}
-
-.back-btn:active {
-  transform: scale(0.9);
-  color: rgba(255, 255, 255, 1);
 }
 
 .loading-state {
@@ -483,11 +952,14 @@ page,
   font-size: 22rpx;
 }
 
+.feed-swiper,
 .screen {
   width: 100%;
-  height: 100vh;
-  background: #000;
+}
+
+.screen {
   position: relative;
+  background: #000;
 }
 
 .video,
@@ -501,14 +973,93 @@ page,
   width: 100%;
   height: 100%;
 }
+.video-play-hint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+.video-play-hint-img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 140rpx;
+  height: 140rpx;
+  margin-top: -70rpx;
+  margin-left: -70rpx;
+}
 
-.progress-bar {
+/* cover-view 版进度条：贴底，左右时间，可拖动 */
+.video-progress-bar {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(120rpx + env(safe-area-inset-bottom));
+  bottom: calc(68rpx + env(safe-area-inset-bottom));
+  height: 80rpx;
+  pointer-events: auto;
+}
+.video-progress-time {
+  position: absolute;
+  top: 16rpx;
+  left: 24rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+}
+.video-progress-time-right {
+  left: auto;
+  right: 24rpx;
+}
+.video-progress-track {
+  position: absolute;
+  left: 130rpx;
+  right: 130rpx;
+  top: 28rpx;
   height: 4rpx;
-  background: rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 2rpx;
+}
+.video-progress-fill {
+  position: absolute;
+  left: 130rpx;
+  top: 26rpx;
+  height: 8rpx;
+  background-color: #ffffff;
+  border-radius: 4rpx;
+}
+.video-progress-thumb {
+  position: absolute;
+  top: 18rpx;
+  width: 24rpx;
+  height: 24rpx;
+  margin-left: -12rpx;
+  border-radius: 12rpx;
+  background-color: #ffffff;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.5);
+}
+
+.landscape-pill {
+  position: fixed;
+  top: calc(12rpx + env(safe-area-inset-top));
+  right: 120rpx;
+  z-index: 18;
+  display: inline-flex;
+  align-items: center;
+  padding: 10rpx 22rpx;
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999rpx;
+  backdrop-filter: blur(10rpx);
+  transition: transform 0.18s ease;
+}
+
+.landscape-pill:active {
+  transform: scale(0.95);
 }
 
 .progress-fill {
@@ -627,24 +1178,64 @@ page,
   background: rgba(255, 255, 255, 0.2);
 }
 
+.back-btn {
+  position: fixed;
+  top: calc(8rpx + env(safe-area-inset-top));
+  left: 10rpx;
+  z-index: 20;
+  width: 88rpx;
+  height: 88rpx;
+  line-height: 80rpx;
+  text-align: center;
+  font-size: 48rpx;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 50%;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.5);
+  transition: transform 0.18s ease;
+}
+
+.back-btn:active {
+  transform: scale(0.9);
+  color: #fff;
+}
+
 .side-actions {
   position: fixed;
   right: 16rpx;
-  bottom: calc(200rpx + env(safe-area-inset-bottom));
+  bottom: calc(220rpx + env(safe-area-inset-bottom));
   z-index: 15;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+.side-actions.is-landscape {
+  right: auto;
+  left: 20rpx;
+  bottom: auto;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: 120rpx;
+}
+
+.side-actions.is-landscape .action {
+  margin-bottom: 18rpx;
+}
+
+.side-actions.is-landscape .action-label {
+  font-size: 18rpx;
+}
+
 .action {
-  width: 96rpx;
-  margin-bottom: 24rpx;
-  text-align: center;
-  font-size: 22rpx;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.6);
+  width: 104rpx;
+  margin-bottom: 26rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   transition: transform 0.2s ease;
 }
 
@@ -652,22 +1243,107 @@ page,
   transform: scale(0.88);
 }
 
+/* 彩色渐变图标底座：每个功能独立配色 */
+.action-icon-wrap {
+  width: 92rpx;
+  height: 92rpx;
+  border-radius: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 8rpx 20rpx rgba(0, 0, 0, 0.35),
+    0 4rpx 14rpx rgba(0, 0, 0, 0.28),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2rpx 6rpx rgba(0, 0, 0, 0.18);
+  border: 1rpx solid rgba(255, 255, 255, 0.32);
+}
+
+.is-favorite {
+  background: linear-gradient(135deg, #ff8aa8, #ff2d55);
+  box-shadow:
+    0 8rpx 22rpx rgba(255, 45, 85, 0.42),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2rpx 6rpx rgba(0, 0, 0, 0.18);
+}
+
+.is-like {
+  background: linear-gradient(135deg, #ffe3a6, #f0a832);
+  box-shadow:
+    0 8rpx 22rpx rgba(240, 168, 50, 0.45),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.55),
+    inset 0 -2rpx 6rpx rgba(122, 74, 10, 0.3);
+}
+
+.is-comment {
+  background: linear-gradient(135deg, #ab90ff, #7c5cff);
+  box-shadow:
+    0 8rpx 22rpx rgba(124, 92, 255, 0.42),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2rpx 6rpx rgba(0, 0, 0, 0.18);
+}
+
+.is-share {
+  background: linear-gradient(135deg, #5fe3da, #2ea8ff);
+  box-shadow:
+    0 8rpx 22rpx rgba(46, 168, 255, 0.42),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2rpx 6rpx rgba(0, 0, 0, 0.18);
+}
+
+.is-detail {
+  background: linear-gradient(135deg, #ffc06b, #ff8a3d);
+  box-shadow:
+    0 8rpx 22rpx rgba(255, 138, 61, 0.42),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2rpx 6rpx rgba(0, 0, 0, 0.18);
+}
+
+/* 激活态（已点赞/已追剧）：渐变提亮 + 外发光增强 */
+.is-favorite.active {
+  background: linear-gradient(135deg, #ff5c7c, #e61742);
+  box-shadow:
+    0 8rpx 28rpx rgba(255, 45, 85, 0.65),
+    0 0 14rpx rgba(255, 92, 124, 0.5),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
+}
+
+.is-like.active {
+  background: linear-gradient(135deg, #ffd257, #f08c1a);
+  box-shadow:
+    0 8rpx 28rpx rgba(240, 140, 26, 0.65),
+    0 0 14rpx rgba(255, 200, 80, 0.55),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.55);
+}
+
+.action-label {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 20rpx;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.7);
+}
+
+.action-num {
+  letter-spacing: 0.5rpx;
+}
+
 .bottom-info {
   position: fixed;
   left: 0;
-  right: 0;
-  bottom: calc(80rpx + env(safe-area-inset-bottom));
+  right: 140rpx;
+  bottom: calc(158rpx + env(safe-area-inset-bottom));
   z-index: 14;
-  padding: 8rpx 24rpx 6rpx;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.3) 70%, transparent 100%);
+  padding: 0 24rpx;
   pointer-events: none;
 }
 
 .info-title {
-  font-size: 30rpx;
+  font-size: 34rpx;
   font-weight: 700;
   color: #fff;
-  text-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.6);
+  text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.8);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -675,215 +1351,180 @@ page,
 
 .info-desc {
   margin-top: 6rpx;
-  font-size: 22rpx;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.72);
-  text-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.6);
+  font-size: 26rpx;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.7);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.episode-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 15;
-  height: 56rpx;
-  line-height: 56rpx;
-  padding: 0 24rpx;
-  padding-bottom: env(safe-area-inset-bottom);
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.35));
-  display: flex;
+.episode-pill {
+  display: inline-flex;
   align-items: center;
-  box-sizing: content-box;
-}
-
-.episode-text {
+  margin-top: 12rpx;
+  padding: 10rpx 20rpx;
   font-size: 22rpx;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.episode-bar:active .episode-text {
-  color: #f7c66a;
-}
-
-.panel {
-  background: linear-gradient(180deg, #0d0f15 0%, #07080b 100%);
-  color: #fff;
-  padding: 22rpx 18rpx 28rpx;
-}
-
-.panel-title {
-  display: flex;
-  align-items: center;
-  font-size: 24rpx;
   font-weight: 800;
-  margin-bottom: 14rpx;
-}
-
-.panel-title::before {
-  content: "";
-  display: inline-block;
-  width: 6rpx;
-  height: 20rpx;
-  margin-right: 10rpx;
-  background: linear-gradient(180deg, #ffe0a1, #f3b84d);
-  border-radius: 4rpx;
-}
-
-.panel-scroll {
-  height: 420rpx;
-}
-
-.panel-item {
-  display: flex;
-  margin-bottom: 10rpx;
-  padding: 10rpx;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14rpx;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)), rgba(15, 17, 24, 0.8);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999rpx;
   backdrop-filter: blur(10rpx);
-  box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.32);
-  transition: transform 0.2s ease;
+  pointer-events: auto;
+  transition: transform 0.18s ease;
 }
 
-.panel-item:active {
-  transform: scale(0.98);
+.episode-pill:active {
+  transform: scale(0.95);
 }
 
-.panel-item.active {
-  border-color: rgba(247, 198, 106, 0.6);
-  background: linear-gradient(160deg, rgba(247, 198, 106, 0.16), rgba(255, 255, 255, 0.04)), rgba(15, 17, 24, 0.85);
-  box-shadow: 0 0 20rpx rgba(247, 198, 106, 0.18);
-}
-
-.panel-item image {
-  width: 88rpx;
-  height: 112rpx;
-  border-radius: 10rpx;
-  background: #1a1d26;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.4);
-  flex-shrink: 0;
-}
-
-.panel-item-copy {
-  flex: 1;
-  min-width: 0;
-  margin-left: 12rpx;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.panel-item-title {
-  font-size: 20rpx;
-  font-weight: 800;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.panel-item-sub {
-  margin-top: 6rpx;
+.info-author {
+  margin-bottom: 4rpx;
+  font-size: 24rpx;
+  font-weight: 700;
   color: #f7c66a;
-  font-size: 17rpx;
-  font-weight: 700;
+  text-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.7);
 }
 
-/* === cover-view 覆盖元素（在 video 内部，Android 原生层级） === */
-.cv-back {
-  position: absolute;
-  top: calc(12rpx + env(safe-area-inset-top));
-  left: 16rpx;
-  width: 56rpx;
-  height: 56rpx;
-  line-height: 50rpx;
-  text-align: center;
-  font-size: 48rpx;
-  font-weight: 300;
-  color: rgba(255, 255, 255, 0.85);
-  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.5);
-}
-
-.cv-actions {
-  position: absolute;
-  right: 16rpx;
-  bottom: calc(200rpx + env(safe-area-inset-bottom));
+.player-wrap {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+}
+
+.comments-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background-color: #111;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.comments-panel-header {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 24rpx 16rpx;
 }
 
-.cv-action {
-  width: 96rpx;
-  margin-bottom: 24rpx;
-  text-align: center;
-  font-size: 22rpx;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.cv-icon {
-  font-size: 48rpx;
-  line-height: 52rpx;
+.comments-panel-title {
+  font-size: 28rpx;
+  font-weight: 800;
   color: #fff;
-  text-align: center;
 }
 
-.cv-label {
-  font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.85);
-  text-align: center;
-}
-
-.cv-bottom {
-  position: absolute;
-  left: 24rpx;
-  right: 120rpx;
-  bottom: calc(80rpx + env(safe-area-inset-bottom));
-}
-
-.cv-title {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.6);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cv-desc {
-  margin-top: 6rpx;
+.comments-total-num {
+  margin-left: 10rpx;
   font-size: 22rpx;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.72);
-  text-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.6);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.55);
 }
 
-.cv-episode {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 56rpx;
-  line-height: 56rpx;
+.comments-panel-close {
+  font-size: 36rpx;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.comments-panel-close:active {
+  color: #f7c66a;
+}
+
+.comments-scroll {
+  flex: 1;
+  min-height: 0;
   padding: 0 24rpx;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.35));
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
 }
 
-.cv-episode-text {
+.comments-empty {
+  padding: 60rpx 0;
+  text-align: center;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.comment-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 16rpx 0;
+}
+
+.comment-avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.comment-avatar-fallback {
+  background: linear-gradient(135deg, #3a3f55, #2a2e42);
+}
+
+.comment-body {
+  flex: 1;
+  margin-left: 16rpx;
+  min-width: 0;
+}
+
+.comment-nick {
   font-size: 22rpx;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(247, 198, 106, 0.9);
+}
+
+.comment-text {
+  margin-top: 4rpx;
+  font-size: 26rpx;
+  color: #fff;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.comment-del {
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.comments-input-row {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
+  background-color: #111;
+}
+
+.comments-input {
+  flex: 1;
+  height: 68rpx;
+  padding: 0 24rpx;
+  font-size: 26rpx;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999rpx;
+}
+
+.comments-send {
+  width: 140rpx;
+  height: 68rpx;
+  line-height: 68rpx;
+  margin-left: 16rpx;
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #11100d;
+  background: linear-gradient(135deg, #ffe0a1, #f3b84d);
+  border-radius: 999rpx;
+  padding: 0;
+}
+
+.comments-send[disabled] {
+  opacity: 0.5;
+  color: #11100d;
+  background: linear-gradient(135deg, #ffe0a1, #f3b84d);
 }
 </style>

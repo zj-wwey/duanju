@@ -2,6 +2,7 @@ package com.duanju.controller;
 
 import com.duanju.common.R;
 import com.duanju.service.DramaService;
+import com.duanju.service.UserActionService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -17,9 +18,11 @@ import java.util.Map;
 public class DramaController {
 
     private final DramaService dramaService;
+    private final UserActionService userActionService;
 
-    public DramaController(DramaService dramaService) {
+    public DramaController(DramaService dramaService, UserActionService userActionService) {
         this.dramaService = dramaService;
+        this.userActionService = userActionService;
     }
 
     @GetMapping("/category-filters")
@@ -39,6 +42,32 @@ public class DramaController {
                                                @RequestParam(required = false) String sort,
                                                @RequestHeader(value = "X-Locale", required = false) String locale) {
         return R.ok(dramaService.getDramas(contentType, keyword, background, theme, setting, audience, time, sort, locale));
+    }
+
+    /** 剧集评论列表（公开浏览，白名单 /api/dramas 前缀已放行） */
+    @GetMapping("/dramas/{dramaId}/comments")
+    public R<Map<String, Object>> getComments(@PathVariable Long dramaId,
+                                              @RequestParam(defaultValue = "1") int page,
+                                              @RequestParam(defaultValue = "20") int pageSize) {
+        return R.ok(userActionService.getComments(dramaId, page, pageSize));
+    }
+
+    /** 某根评论下的回复列表（"查看更多回复"） */
+    @GetMapping("/dramas/comments/{rootId}/replies")
+    public R<Map<String, Object>> getReplies(@PathVariable Long rootId,
+                                             @RequestParam(defaultValue = "1") int page,
+                                             @RequestParam(defaultValue = "20") int pageSize) {
+        return R.ok(userActionService.getReplies(rootId, page, pageSize));
+    }
+
+    /** Feed 流：每剧一条，附带一集播放信息，分页 */
+    @GetMapping("/dramas/feed")
+    public R<Map<String, Object>> feed(@RequestParam(required = false) String contentType,
+                                       @RequestParam(required = false) Boolean recommended,
+                                       @RequestParam(defaultValue = "1") int page,
+                                       @RequestParam(defaultValue = "10") int size,
+                                       @RequestHeader(value = "X-Locale", required = false) String locale) {
+        return R.ok(dramaService.getFeed(contentType, recommended, page, size, locale));
     }
 
     @GetMapping("/dramas/{id}")

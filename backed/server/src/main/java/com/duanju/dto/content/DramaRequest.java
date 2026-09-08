@@ -29,7 +29,10 @@ public record DramaRequest(
         Integer hotScore,
         Boolean recommended,
         Integer status,
-        Integer sortOrder
+        Integer sortOrder,
+        String coverObjectKey,
+        String horizontalCoverObjectKey,
+        String verticalCoverObjectKey
 ) {
     public Map<String, Object> toMap(Long id) {
         return MapUtil.map(
@@ -49,7 +52,10 @@ public record DramaRequest(
                 "hotScore", hotScore == null ? 0 : hotScore,
                 "recommended", Boolean.TRUE.equals(recommended) ? 1 : 0,
                 "status", status == null ? 1 : status,
-                "sortOrder", sortOrder == null ? 0 : sortOrder
+                "sortOrder", sortOrder == null ? 0 : sortOrder,
+                "coverObjectKey", coverObjectKey,
+                "horizontalCoverObjectKey", horizontalCoverObjectKey,
+                "verticalCoverObjectKey", verticalCoverObjectKey
         );
     }
 }

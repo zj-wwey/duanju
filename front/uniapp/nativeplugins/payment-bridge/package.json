@@ -1,0 +1,9 @@
+{
+  "name": "PaymentBridge",
+  "id": "PaymentBridge",
+  "version": "1.0.0",
+  "description": "Apple IAP / Google Play Billing / Apple Pay / Google Pay 原生支付桥接",
+  "platforms": "Android,iOS",
+  "android_package_name": "io.duanju.paymentbridge",
+  "ios_frameworks": ["StoreKit", "PassKit", "Stripe"]
+}

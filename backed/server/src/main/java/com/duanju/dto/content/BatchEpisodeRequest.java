@@ -21,7 +21,8 @@ public record BatchEpisodeRequest(
             String accessType,
             Integer sortOrder,
             String storageProvider,
-            Integer status
+            Integer status,
+            String coverObjectKey
     ) {
     }
 }

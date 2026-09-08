@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <view v-if="loading" class="state">{{ t('loading') }}</view>
     <template v-else-if="drama">
@@ -11,7 +11,7 @@
           <view class="desc">{{ drama.description || t('noSynopsis') }}</view>
           <view class="buttons">
             <button class="primary" @click="playFirst">{{ t('play') }}</button>
-            <button class="ghost" @click="toggleFavorite">{{ drama.favorite ? t('saved') : t('save') }}</button>
+            <button class="ghost" @click="toggleFavorite">{{ drama.favorite ? t('favorited') : t('favorite') }}</button>
           </view>
         </view>
       </view>

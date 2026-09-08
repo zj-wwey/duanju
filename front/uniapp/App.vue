@@ -16,5 +16,12 @@
 	@import 'components/colorui/main.css';
 	@import 'components/colorui/icon.css';
 	@import 'static/css/rtl.css';
-	@import 'static/css/mobile-layout.css';
+/* 全局字体：中文优先 */
+page {
+  font-family: -apple-system, BlinkMacSystemFont,
+               "PingFang SC", "HarmonyOS Sans",
+               "Noto Sans SC", "Source Han Sans SC",
+               "Microsoft YaHei", "Hiragino Sans GB",
+               "Segoe UI", sans-serif;
+}
 </style>
