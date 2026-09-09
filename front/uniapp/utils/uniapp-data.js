@@ -412,7 +412,15 @@ export const UNIAPP_OVERRIDES = {
     membershipLevelShortGold: 'G',
     membershipLevelShortDiamond: 'D',
     autoRenewalSelectProduct: 'Select a plan',
-    autoRenewalSubscribeConfirm: 'Subscribe to auto-renewal for {name}?'
+    autoRenewalSubscribeConfirm: 'Subscribe to auto-renewal for {name}?',
+    email: 'Email',
+    copy: 'Copy',
+    copied: 'Copied',
+    serviceHours: 'Service Hours',
+    serviceHoursValue: '9:00 – 21:00 (GMT+8)',
+    contactTip: 'We usually reply within 24 hours.',
+    contactEmail: 'support@duanju.app',
+    contactQQ: '123 456 789'
   }
 }
 
@@ -587,6 +595,15 @@ export const zhHansOverrides = {
     editProfile: '编辑资料',
     settings: '设置',
     orders: '我的订单',
+    contactUs: '联系我们',
+    email: '邮箱',
+    copy: '复制',
+    copied: '已复制',
+    serviceHours: '服务时间',
+    serviceHoursValue: '9:00 – 21:00（北京时间）',
+    contactTip: '我们会在 24 小时内回复您的消息。',
+    contactEmail: 'support@duanju.app',
+    contactQQ: '123 456 789',
     changePassword: '修改密码',
     notifications: '消息通知',
     autoPlay: '自动连播',

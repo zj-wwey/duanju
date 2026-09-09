@@ -1,9 +1,7 @@
 package com.duanju.controller;
 
 import com.duanju.common.R;
-import com.duanju.entity.AppUser;
 import com.duanju.entity.DramaComment;
-import com.duanju.mapper.entity.AppUserMapper;
 import com.duanju.mapper.entity.DramaCommentMapper;
 import com.duanju.service.entity.DramaCommentService;
 import com.duanju.util.MapUtil;
@@ -34,14 +32,11 @@ public class AdminCommentController {
 
     private final DramaCommentService commentService;
     private final DramaCommentMapper commentMapper;
-    private final AppUserMapper appUserMapper;
 
     public AdminCommentController(DramaCommentService commentService,
-                                  DramaCommentMapper commentMapper,
-                                  AppUserMapper appUserMapper) {
+                                  DramaCommentMapper commentMapper) {
         this.commentService = commentService;
         this.commentMapper = commentMapper;
-        this.appUserMapper = appUserMapper;
     }
 
     /**
@@ -70,34 +65,9 @@ public class AdminCommentController {
                             .eq(status != null, "status", status));
         }
 
-        List<DramaComment> list = commentMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<DramaComment>()
-                        .eq(dramaId != null, "drama_id", dramaId)
-                        .eq(status != null, "status", status)
-                        .orderByDesc("id")
-                        .last("limit " + ((page - 1) * pageSize) + ", " + pageSize));
-
-        List<Map<String, Object>> records = MapUtil.beansToMaps(list);
-        if (!records.isEmpty()) {
-            List<Long> userIds = records.stream()
-                    .map(r -> MapUtil.lng(r, "user_id"))
-                    .filter(id -> id != null)
-                    .distinct()
-                    .collect(Collectors.toList());
-            if (!userIds.isEmpty()) {
-                List<AppUser> users = appUserMapper.selectBatchIds(userIds);
-                Map<Long, AppUser> userMap = users.stream()
-                        .collect(Collectors.toMap(AppUser::getId, u -> u));
-                for (Map<String, Object> record : records) {
-                    Long userId = MapUtil.lng(record, "user_id");
-                    AppUser user = userMap.get(userId);
-                    if (user != null) {
-                        record.put("nickname", user.getNickname());
-                        record.put("avatar_url", user.getAvatarUrl());
-                    }
-                }
-            }
-        }
+        List<Map<String, Object>> records = commentMapper.adminList(
+                dramaId, status,
+                (page - 1) * pageSize, pageSize);
 
         return R.ok(MapUtil.map("total", total, "page", page, "page_size", pageSize, "records", records));
     }

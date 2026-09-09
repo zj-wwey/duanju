@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page mine-page">
     <view class="page-head">
       <view class="page-title">{{ t('profile') }}</view>
@@ -25,54 +25,54 @@
 
     <view class="actions">
       <view class="item" @click="checkin">
-        <view class="item-icon">🎁</view>
+        <view class="item-icon icon-reward">🎁</view>
         <view class="item-label">{{ t('dailyReward') }}</view>
         <view class="item-arrow">›</view>
       </view>
 
-      <view class="item" @click="goTab('/pages/store/store?tab=orders')">
-        <view class="item-icon">📦</view>
+      <view class="item" @click="go('/pages/mine/orders')">
+        <view class="item-icon icon-order">📦</view>
         <view class="item-label">{{ t('orders') }}</view>
         <view class="item-arrow">›</view>
       </view>
       <view class="item" @click="go('/pages/mine/favorites')">
-        <view class="item-icon">⭐</view>
+        <view class="item-icon icon-fav">⭐</view>
         <view class="item-label">{{ t('myList') }}</view>
         <view class="item-arrow">›</view>
       </view>
       <view class="item" @click="go('/pages/mine/history')">
-        <view class="item-icon">📺</view>
+        <view class="item-icon icon-history">📺</view>
         <view class="item-label">{{ t('watchHistory') }}</view>
         <view class="item-arrow">›</view>
       </view>
       <view class="item" @click="go('/pages/mine/membership')">
-        <view class="item-icon">💎</view>
+        <view class="item-icon icon-vip">💎</view>
         <view class="item-label">{{ t('membershipTitle') }}</view>
         <view class="item-arrow">›</view>
       </view>
       <view class="item" @click="go('/pages/mine/announcements')">
-        <view class="item-icon">📢</view>
+        <view class="item-icon icon-announce">📢</view>
         <view class="item-label">{{ t('announcements') }}</view>
         <view class="item-arrow">›</view>
       </view>
       <view class="item" @click="go('/pages/mine/feedback')">
-        <view class="item-icon">💬</view>
+        <view class="item-icon icon-feedback">💬</view>
         <view class="item-label">{{ t('feedback') }}</view>
         <view class="item-arrow">›</view>
       </view>
       <view class="item" @click="go('/pages/mine/settings')">
-        <view class="item-icon">⚙️</view>
+        <view class="item-icon icon-settings">⚙️</view>
         <view class="item-label">{{ t('settings') }}</view>
         <view class="item-arrow">›</view>
       </view>
       <view class="item" @click="go('/pages/mine/points')">
-        <view class="item-icon">📋</view>
+        <view class="item-icon icon-credit">📋</view>
         <view class="item-label">{{ t('creditActivity') }}</view>
         <view class="item-arrow">›</view>
       </view>
 
       <view class="item" @click="go('/pages/mine/contact')">
-        <view class="item-icon">📞</view>
+        <view class="item-icon icon-contact">📞</view>
         <view class="item-label">{{ t('contactUs') }}</view>
         <view class="item-arrow">›</view>
       </view>
@@ -266,7 +266,7 @@ page,
   height: 48rpx;
   line-height: 48rpx;
   text-align: center;
-  color: #ede6d8;
+  color: #1a1005;
   background: linear-gradient(135deg, #ffe0a1, #f3b84d);
   border-radius: 999rpx;
   font-size: 20rpx;
@@ -339,7 +339,7 @@ page,
   text-align: center;
   border-radius: 50%;
   background: linear-gradient(135deg, #ffe0a1, #f3b84d);
-  color: #ede6d8;
+  color: #1a1005;
   font-size: 30rpx;
   font-weight: 800;
   box-shadow:
@@ -387,7 +387,7 @@ page,
   height: 60rpx;
   line-height: 60rpx;
   background: linear-gradient(135deg, #ffe0a1, #f3b84d);
-  color: #ede6d8;
+  color: #1a1005;
   border-radius: 999rpx;
   font-size: 22rpx;
   font-weight: 800;
@@ -449,10 +449,21 @@ page,
   letter-spacing: normal;
   text-align: center;
   border-radius: 12rpx;
-  background: linear-gradient(135deg, rgba(247, 198, 106, 0.2), rgba(247, 198, 106, 0.06));
-  border: 1rpx solid rgba(247, 198, 106, 0.25);
+  border: 1rpx solid rgba(255, 255, 255, 0.18);
   flex-shrink: 0;
 }
+
+/* ---- 每项专属配色 ---- */
+.icon-reward   { background: linear-gradient(135deg, rgba(247, 118, 84, 0.32), rgba(247, 118, 84, 0.08)); border-color: rgba(247, 118, 84, 0.42); }  /* 🎁 橙红 */
+.icon-order    { background: linear-gradient(135deg, rgba(77, 208, 225, 0.32), rgba(77, 208, 225, 0.08)); border-color: rgba(77, 208, 225, 0.42); }  /* 📦 青蓝 */
+.icon-fav      { background: linear-gradient(135deg, rgba(247, 198, 106, 0.36), rgba(247, 198, 106, 0.08)); border-color: rgba(247, 198, 106, 0.46); }  /* ⭐ 金黄 */
+.icon-history  { background: linear-gradient(135deg, rgba(167, 139, 250, 0.32), rgba(167, 139, 250, 0.08)); border-color: rgba(167, 139, 250, 0.42); }  /* 📺 紫 */
+.icon-vip      { background: linear-gradient(135deg, rgba(56, 189, 248, 0.34), rgba(56, 189, 248, 0.08)); border-color: rgba(56, 189, 248, 0.44); }  /* 💎 钻石青 */
+.icon-announce { background: linear-gradient(135deg, rgba(239, 68, 68, 0.32), rgba(239, 68, 68, 0.08)); border-color: rgba(239, 68, 68, 0.42); }  /* 📢 红 */
+.icon-feedback { background: linear-gradient(135deg, rgba(244, 114, 182, 0.30), rgba(244, 114, 182, 0.06)); border-color: rgba(244, 114, 182, 0.40); }  /* 💬 粉紫 */
+.icon-settings { background: linear-gradient(135deg, rgba(148, 163, 184, 0.30), rgba(148, 163, 184, 0.06)); border-color: rgba(148, 163, 184, 0.40); }  /* ⚙️ 灰金属 */
+.icon-credit   { background: linear-gradient(135deg, rgba(34, 197, 94, 0.30), rgba(34, 197, 94, 0.06)); border-color: rgba(34, 197, 94, 0.40); }  /* 📋 绿 */
+.icon-contact  { background: linear-gradient(135deg, rgba(16, 185, 129, 0.32), rgba(16, 185, 129, 0.06)); border-color: rgba(16, 185, 129, 0.42); }  /* 📞 翠绿 */
 
 .item-label {
   flex: 1;
@@ -498,7 +509,7 @@ page,
 .buy-btn {
   min-width: 180rpx;
   margin: 0;
-  color: #ede6d8;
+  color: #1a1005;
   background: linear-gradient(135deg, #ffe0a1, #f3b84d);
   border-radius: 999rpx;
   font-size: 24rpx;

@@ -60,8 +60,10 @@ export const api = {
   toggleLike(dramaId) {
     return request({ url: '/user/likes/' + dramaId + '/toggle', method: 'POST' })
   },
-  dramaComments(dramaId, page = 1, pageSize = 20) {
-    return request({ url: '/dramas/' + dramaId + '/comments?page=' + page + '&pageSize=' + pageSize })
+  dramaComments(dramaId, episodeId, page = 1, pageSize = 20) {
+    let url = '/dramas/' + dramaId + '/comments?page=' + page + '&pageSize=' + pageSize
+    if (episodeId) url += '&episodeId=' + episodeId
+    return request({ url })
   },
   dramaCommentReplies(rootId, page = 1, pageSize = 20) {
     return request({ url: '/dramas/comments/' + rootId + '/replies?page=' + page + '&pageSize=' + pageSize })
@@ -161,6 +163,9 @@ export const api = {
   },
   orders() {
     return request({ url: '/user/orders' })
+  },
+  deleteOrder(orderNo) {
+    return request({ url: '/user/orders/' + encodeURIComponent(orderNo), method: 'DELETE' })
   },
   adReward(adSlot = 'default', traceId) {
     return request({ url: '/user/ad-reward', method: 'POST', data: { adSlot, traceId: traceId || String(Date.now()) } })

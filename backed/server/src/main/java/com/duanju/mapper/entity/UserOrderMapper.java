@@ -22,7 +22,7 @@ public interface UserOrderMapper extends BaseMapper<UserOrder> {
             from user_order o
             left join app_user u on u.id = o.user_id
             left join point_product p on p.id = o.product_id
-            where o.user_id = #{userId}
+            where o.user_id = #{userId} and o.deleted_at is null
             order by o.id desc
             limit #{limit}
             """)

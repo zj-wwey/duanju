@@ -123,10 +123,7 @@ public class UserActionService {
         if (parent == null || !Integer.valueOf(1).equals(parent.getStatus())) {
             throw new IllegalArgumentException("parent comment not found");
         }
-        // 不允许回复自己（防刷屏），但允许回复别人
-        if (parent.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("cannot reply to your own comment chain");
-        }
+        // 允许在任意评论下回复（包括自己的），防刷屏走频率限制而非业务禁止
         Long rootId = parent.getRootId() != null ? parent.getRootId() : parent.getId();
         Map<String, Object> result = doCreateComment(userId, dramaId, episodeId, content, parentId, replyToUserId);
 
@@ -242,13 +239,13 @@ public class UserActionService {
         return s.length() > max ? s.substring(0, max) + "…" : s;
     }
 
-    /** 评论列表：根评论分页 + 每条根评论返回最新 3 条回复（内嵌 children） */
-    public Map<String, Object> getComments(Long dramaId, int page, int pageSize) {
+    /** 评论列表：根评论分页 + 每条根评论返回最新 3 条回复（内嵌 children）；episodeId 非空时按集过滤 */
+    public Map<String, Object> getComments(Long dramaId, Long episodeId, int page, int pageSize) {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 20;
         if (pageSize > 100) pageSize = 100;
-        long total = dramaCommentService.countRoots(dramaId);
-        List<Map<String, Object>> roots = dramaCommentService.roots(dramaId, (page - 1) * pageSize, pageSize);
+        long total = dramaCommentService.countRoots(dramaId, episodeId);
+        List<Map<String, Object>> roots = dramaCommentService.roots(dramaId, episodeId, (page - 1) * pageSize, pageSize);
         // 给每条根评论挂 children
         for (Map<String, Object> r : roots) {
             Long rootId = MapUtil.lng(r, "id");

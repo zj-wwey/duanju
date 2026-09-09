@@ -21,9 +21,11 @@ import jakarta.validation.constraints.Min;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -62,6 +64,16 @@ public class UserOrderController {
     @GetMapping("/orders")
     public R<List<Map<String, Object>>> orders(@RequestParam(defaultValue = "100") @Min(1) @Max(100) int limit) {
         return R.ok(orderService.getUserOrders(limit));
+    }
+
+    /**
+     * 用户软删除自己的订单。仅 CANCELLED / CLOSED / REFUNDED 终态允许删除。
+     * PENDING / PAID 订单禁止删除 (前者引导完成支付或等待自动取消,后者涉及真实支付记录不可删)。
+     */
+    @DeleteMapping("/orders/{orderNo}")
+    public R<Map<String, Object>> deleteOrder(@PathVariable String orderNo) {
+        orderService.deleteOrder(orderNo);
+        return R.ok(Map.of("orderNo", orderNo));
     }
 
     @PostMapping("/orders")

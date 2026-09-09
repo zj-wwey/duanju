@@ -99,4 +99,7 @@ public class UserOrder {
 
     @TableField("updated_at")
     private LocalDateTime updatedAt;
+
+    @TableField("deleted_at")
+    private LocalDateTime deletedAt;
 }

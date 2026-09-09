@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <view class="page-head">
       <view class="page-title">{{ t('contactUs') }}</view>
@@ -8,18 +8,18 @@
       <view class="card-icon">📧</view>
       <view class="card-info">
         <view class="card-label">{{ t('email') }}</view>
-        <view class="card-value">support@duanju.app</view>
+        <view class="card-value">{{ t('contactEmail') }}</view>
       </view>
-      <view class="copy-btn" @click="copy('support@duanju.app')">{{ t('copy') }}</view>
+      <view class="copy-btn" @click="copy(t('contactEmail'))">{{ t('copy') }}</view>
     </view>
 
     <view class="contact-card">
       <view class="card-icon">💬</view>
       <view class="card-info">
         <view class="card-label">QQ</view>
-        <view class="card-value">123 456 789</view>
+        <view class="card-value">{{ t('contactQQ') }}</view>
       </view>
-      <view class="copy-btn" @click="copy('123456789')">{{ t('copy') }}</view>
+      <view class="copy-btn" @click="copy(t('contactQQ'))">{{ t('copy') }}</view>
     </view>
 
     <view class="contact-card">
@@ -120,7 +120,7 @@ page,
   padding: 10rpx 22rpx;
   border-radius: 999rpx;
   background: linear-gradient(135deg, #ffe0a1, #f3b84d);
-  color: #11100d;
+  color: #1a1005;
   font-size: 22rpx;
   font-weight: 700;
   box-shadow: 0 6rpx 16rpx rgba(247, 198, 106, 0.36);

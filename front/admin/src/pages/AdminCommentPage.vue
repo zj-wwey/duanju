@@ -35,10 +35,11 @@
       </div>
     </div>
 
-    <el-table
+      <el-table
       :data="records"
       border
       v-loading="loading"
+      style="width: 100%"
       @selection-change="onSelectionChange"
     >
       <el-table-column type="selection" width="42" />
@@ -53,10 +54,10 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column :label="adminT('commentDrama')" width="200">
+      <el-table-column :label="adminT('commentDrama')" width="220">
         <template #default="{ row }">
-          <span class="drama-id">剧集 #{{ row.drama_id }}</span>
-          <span v-if="row.episode_id" class="episode-id"> · 第{{ row.episode_id }}集</span>
+          <span class="drama-title">{{ row.drama_title || '未知剧集' }}</span>
+          <span v-if="row.episode_no" class="episode-tag">第{{ row.episode_no }}集</span>
         </template>
       </el-table-column>
       <el-table-column :label="adminT('commentParent')" width="120">
@@ -87,20 +88,28 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column :label="adminT('actions')" width="180" fixed="right">
+      <el-table-column :label="adminT('actions')" width="220">
         <template #default="{ row }">
-          <el-button
-            v-if="Number(row.status) === 1"
-            size="small"
-            type="danger"
-            @click="confirmDelete(row)"
-          >{{ adminT('delete') }}</el-button>
-          <el-button
-            v-else
-            size="small"
-            type="success"
-            @click="confirmRestore(row)"
-          >{{ adminT('restore') }}</el-button>
+          <div class="action-btns">
+            <el-button
+              v-if="Number(row.status) === 1"
+              size="small"
+              type="danger"
+              @click="confirmDelete(row)"
+            >{{ adminT('delete') }}</el-button>
+            <template v-else>
+              <el-button
+                size="small"
+                type="success"
+                @click="confirmRestore(row)"
+              >{{ adminT('restore') }}</el-button>
+              <el-button
+                size="small"
+                type="danger"
+                @click="confirmDelete(row)"
+              >{{ adminT('delete') }}</el-button>
+            </template>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -246,13 +255,19 @@ onMounted(load)
   color: #909399;
   font-size: 12px;
 }
-.drama-id {
-  color: #409eff;
+.drama-title {
+  color: #303133;
   font-size: 13px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
 }
-.episode-id {
-  color: #909399;
+.episode-tag {
+  color: #409eff;
   font-size: 12px;
+  background: #ecf5ff;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 .parent-tag {
   color: #e6a23c;
@@ -298,5 +313,11 @@ onMounted(load)
   font-size: 20px;
   font-weight: 700;
   color: #303133;
+}
+.action-btns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
 }
 </style>

@@ -44,12 +44,13 @@ public class DramaController {
         return R.ok(dramaService.getDramas(contentType, keyword, background, theme, setting, audience, time, sort, locale));
     }
 
-    /** 剧集评论列表（公开浏览，白名单 /api/dramas 前缀已放行） */
+    /** 剧集评论列表（公开浏览，白名单 /api/dramas 前缀已放行）；episodeId 非空时按集过滤 */
     @GetMapping("/dramas/{dramaId}/comments")
     public R<Map<String, Object>> getComments(@PathVariable Long dramaId,
+                                              @RequestParam(required = false) Long episodeId,
                                               @RequestParam(defaultValue = "1") int page,
                                               @RequestParam(defaultValue = "20") int pageSize) {
-        return R.ok(userActionService.getComments(dramaId, page, pageSize));
+        return R.ok(userActionService.getComments(dramaId, episodeId, page, pageSize));
     }
 
     /** 某根评论下的回复列表（"查看更多回复"） */

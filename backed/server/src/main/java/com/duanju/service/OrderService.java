@@ -615,6 +615,39 @@ public class OrderService {
         return userOrderService.orderByNo(orderNo);
     }
 
+
+    /**
+     * 用户软删除自己的终态订单 (CANCELLED / CLOSED / REFUNDED)。
+     * 涉及支付的订单 (PENDING / PAID) 不允许删除,避免影响财务对账。
+     * 已删除订单对用户侧查询不可见,但管理员仍可查看。
+     */
+    public void deleteOrder(String orderNo) {
+        UserOrder order = userOrderService.lambdaQuery()
+                .eq(UserOrder::getOrderNo, orderNo)
+                .last("limit 1")
+                .one();
+        if (order == null) {
+            throw new IllegalArgumentException("order not found");
+        }
+        if (!PrincipalHolder.userId().equals(order.getUserId())) {
+            throw new IllegalArgumentException("order not found");
+        }
+        if (order.getDeletedAt() != null) {
+            return;
+        }
+        String s = order.getStatus();
+        if ("PENDING".equals(s)) {
+            throw new IllegalArgumentException("待支付订单不支持删除,请先完成支付或等待自动取消");
+        }
+        if ("PAID".equals(s)) {
+            throw new IllegalArgumentException("已支付订单不支持删除");
+        }
+        // 终态订单 (CANCELLED / CLOSED / REFUNDED) 允许软删除
+        userOrderService.lambdaUpdate()
+                .set(UserOrder::getDeletedAt, LocalDateTime.now())
+                .eq(UserOrder::getId, order.getId())
+                .update();
+    }
     public Map<String, Object> updateStatus(String orderNo, String status) {
         if (!List.of("PENDING", "CANCELLED", "CLOSED").contains(status)) {
             throw new IllegalArgumentException("invalid status");

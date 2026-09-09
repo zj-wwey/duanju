@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="page">
     <view class="page-head">
       <view class="page-title">{{ t('orders') }}</view>
@@ -27,10 +27,11 @@
         </view>
         <view class="order-footer">
           <text class="order-time">{{ formatDate(item.created_at || item.createdAt) }}</text>
+          <text v-if="canDelete(item.status)" class="order-delete" @click="onDelete(item)">删除</text>
         </view>
       </view>
     </view>
-    <app-tab-bar current="store" />
+    <app-tab-bar current="mine" />
   </view>
 </template>
 
@@ -91,6 +92,31 @@ export default {
     },
     formatDate(value) {
       return formatDateUtil(value, this.locale, true)
+    },
+    canDelete(status) {
+      return ['CANCELLED', 'CLOSED', 'REFUNDED'].includes(status)
+    },
+    onDelete(item) {
+      const orderNo = item.order_no || item.orderNo || item.id
+      uni.showModal({
+        title: '确认删除',
+        content: '删除后将从我的订单中消失,此操作不可恢复',
+        confirmText: '删除',
+        confirmColor: '#ff6b6b',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            await api.deleteOrder(orderNo)
+            this.orders = this.orders.filter(o => {
+              const n = o.order_no || o.orderNo || o.id
+              return String(n) !== String(orderNo)
+            })
+            uni.showToast({ title: '已删除', icon: 'success' })
+          } catch (err) {
+            uni.showToast({ title: err.message || '删除失败', icon: 'none' })
+          }
+        }
+      })
     },
     t(key, params) {
       return translate(key, params, this.locale)
@@ -228,9 +254,29 @@ page,
 }
 
 .order-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 16rpx;
   padding-top: 16rpx;
   border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.order-delete {
+  font-size: 22rpx;
+  font-weight: 700;
+  letter-spacing: 0.5rpx;
+  color: #ff6b6b;
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 107, 107, 0.14);
+  border: 1rpx solid rgba(255, 107, 107, 0.32);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.order-delete:active {
+  transform: scale(0.94);
+  background: rgba(255, 107, 107, 0.26);
 }
 
 .order-time {

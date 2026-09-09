@@ -165,7 +165,11 @@
                   <view v-else class="comment-avatar comment-avatar-fallback"></view>
                   <view class="comment-body">
                     <view class="comment-nick">{{ c.nickname || '匿名' }}</view>
-                    <view class="comment-text">{{ c.content }}</view>
+                    <view class="comment-text">
+                <text v-if="!isTruncated(c)">{{ c.content }}</text>
+                <text v-else>{{ truncateText(c.content) }}</text>
+                <text v-if="isTruncated(c)" class="comment-expand" @click.stop="toggleExpand(c)">{{ c._expanded ? '收起' : '展开' }}</text>
+              </view>
                     <view class="comment-meta">
                       <text class="comment-reply-btn" @click.stop="startReply(c, null)">回复</text>
                       <text v-if="myUserId && String(c.user_id) === String(myUserId)" class="comment-del" @click.stop="removeComment(c)">{{ t('commentDelete') }}</text>
@@ -177,7 +181,7 @@
                           <text class="comment-nick-mini">{{ r.nickname || '匿名' }}</text>
                           <text v-if="r.reply_to_nickname" class="reply-at">回复 <text class="comment-nick-mini">{{ r.reply_to_nickname }}</text></text>
                           <text class="reply-colon">：</text>
-                          <text>{{ r.content }}</text>
+                          <text><text v-if="!isTruncated(r)">{{ r.content }}</text><text v-else>{{ truncateText(r.content) }}</text><text v-if="isTruncated(r)" class="comment-expand" @click.stop="toggleExpand(r)">{{ r._expanded ? '收起' : '展开' }}</text></text>
                         </view>
                         <view class="comment-reply-actions">
                           <text class="comment-reply-btn" @click.stop="startReply(r, c)">回复</text>
@@ -747,17 +751,17 @@ export default {
       this.commentsTotal = 0
       this.commentsDramaId = null
       this.cancelReply()
-      this.prefetchCommentCount(item.dramaId)
+      this.prefetchCommentCount(item.dramaId, item.episodeId)
       this.sendOverlayUpdate()
       this.playCurrent(item)
       if (this.showCommentPanel) {
         this.loadComments()
       }
     },
-    async prefetchCommentCount(dramaId) {
+    async prefetchCommentCount(dramaId, episodeId) {
       if (!dramaId) return
       try {
-        const data = await api.dramaComments(dramaId, 1, 1)
+        const data = await api.dramaComments(dramaId, episodeId, 1, 1)
         const total = Number(data && data.total || 0)
         if (this.currentItem && String(this.currentItem.dramaId) === String(dramaId)) {
           this.commentCount = total
@@ -1127,12 +1131,15 @@ export default {
     async loadComments() {
       const item = this.currentItem
       const dramaId = item ? item.dramaId : null
+      const episodeId = item ? item.episodeId : null
       if (!dramaId) return
-      if (String(this.commentsDramaId || '') === String(dramaId) && this.comments.length > 0) return
-      this.commentsDramaId = dramaId
+      // 缓存键含 episodeId，同一部剧不同集评论独立
+      const cacheKey = dramaId + '|' + (episodeId || '')
+      if (String(this.commentsDramaId || '') === cacheKey && this.comments.length > 0) return
+      this.commentsDramaId = cacheKey
       this.commentsLoading = true
       try {
-        const data = await api.dramaComments(dramaId)
+        const data = await api.dramaComments(dramaId, episodeId)
         this.comments = (data && data.records) || []
         this.commentsTotal = Number((data && data.total) || 0)
         this.commentCount = this.commentsTotal
@@ -1234,15 +1241,51 @@ export default {
       }
     },
     async removeComment(comment) {
-      try {
-        await api.deleteComment(comment.id)
-        this.comments = this.comments.filter(c => c.id !== comment.id)
-        this.commentsTotal = Math.max(0, this.commentsTotal - 1)
-        this.commentCount = this.commentsTotal
-        this.toast(this.t('commentDeleted'))
-      } catch (err) {
-        this.toast(err.message)
-      }
+      uni.showModal({
+        title: '确认删除',
+        content: '删除后将从评论区消失,此操作不可恢复',
+        confirmText: '删除',
+        confirmColor: '#ff6b6b',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            await api.deleteComment(comment.id)
+            // 删根评论 or 删回复
+            let removed = false
+            for (const cc of this.comments) {
+              if (cc.children && cc.children.some(r => String(r.id) === String(comment.id))) {
+                cc.children = cc.children.filter(r => String(r.id) !== String(comment.id))
+                cc.replies_total = Math.max(0, (cc.replies_total || 0) - 1)
+                removed = true
+                break
+              }
+            }
+            if (!removed) {
+              this.comments = this.comments.filter(c => String(c.id) !== String(comment.id))
+              this.commentsTotal = Math.max(0, this.commentsTotal - 1)
+              this.commentCount = this.commentsTotal
+            }
+            this.toast(this.t('commentDeleted'))
+          } catch (err) {
+            this.toast(err.message)
+          }
+        }
+      })
+    },
+    // 评论内容截断：超过 20 字显示"展开/收起"
+    isTruncated(comment) {
+      if (!comment || !comment.content) return false
+      const maxLen = 20
+      return comment.content.length > maxLen && !comment._expanded
+    },
+    truncateText(content) {
+      if (!content) return ''
+      const maxLen = 20
+      if (content.length <= maxLen) return content
+      return content.substring(0, maxLen) + '…'
+    },
+    toggleExpand(comment) {
+      this.$set(comment, '_expanded', !comment._expanded)
     },
     formatCount(num) {
       const n = Number(num || 0)
@@ -1590,6 +1633,12 @@ page,
   color: rgba(255, 255, 255, 0.9);
   line-height: 1.5;
   word-break: break-all;
+}
+.comment-expand {
+  display: inline-block;
+  margin-left: 8rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .comment-del {

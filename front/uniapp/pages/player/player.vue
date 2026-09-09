@@ -163,27 +163,68 @@
         @switch-drama="switchDrama"
       />
 
-      <!-- 内嵌式评论区（跟首页一样：视频压缩 + 内嵌评论区，不用 u-popup 盖在 video 上） -->
+      <!-- 内嵌式评论区（跟首页一致：视频压缩 + 内嵌评论区，根评论 + 嵌套回复 + 截断展开 + 回复按钮） -->
       <view v-show="showComments" class="comments-panel" @click="blurCommentInput">
         <view class="comments-panel-header">
           <text class="comments-panel-title">{{ t('commentTitle') }}<text v-if="commentsTotal > 0" class="comments-total-num">{{ commentsTotal }}</text></text>
           <text class="comments-panel-close" @click.stop="closeComments">⌄</text>
         </view>
-        <scroll-view scroll-y class="comments-scroll" @click.stop="blurCommentInput">
+        <scroll-view scroll-y class="comments-scroll" @touchmove.stop.prevent @click.stop="blurCommentInput">
           <view v-if="commentsLoading" class="comments-empty">{{ t('loading') }}</view>
           <view v-else-if="!comments.length" class="comments-empty">{{ t('commentEmpty') }}</view>
-          <view v-else class="comment-item" v-for="c in comments" :key="c.id">
-            <image v-if="c.avatar_url" class="comment-avatar" :src="c.avatar_url" mode="aspectFill" />
-            <view v-else class="comment-avatar comment-avatar-fallback"></view>
-            <view class="comment-body">
-              <view class="comment-nick">{{ c.nickname || '匿名' }}</view>
-              <view class="comment-text">{{ c.content }}</view>
+          <view v-else>
+            <!-- 根评论 + 嵌套回复（结构与首页 index.vue 完全一致） -->
+            <view v-for="c in comments" :key="c.id" class="comment-item" @click.stop>
+              <image v-if="c.avatar_url" class="comment-avatar" :src="c.avatar_url" mode="aspectFill" />
+              <view v-else class="comment-avatar comment-avatar-fallback"></view>
+              <view class="comment-body">
+                <view class="comment-nick">{{ c.nickname || '匿名' }}</view>
+                <view class="comment-text">
+                  <text v-if="!isTruncated(c)">{{ c.content }}</text>
+                  <text v-else>{{ truncateText(c.content) }}</text>
+                  <text v-if="isTruncated(c)" class="comment-expand" @click.stop="toggleExpand(c)">{{ c._expanded ? '收起' : '展开' }}</text>
+                </view>
+                <view class="comment-meta">
+                  <text class="comment-reply-btn" @click.stop="startReply(c, null)">回复</text>
+                  <text v-if="myUserId && String(c.user_id) === String(myUserId)" class="comment-del" @click.stop="removeComment(c)">{{ t('commentDelete') }}</text>
+                </view>
+                <!-- 该根评论下的回复 -->
+                <view v-if="c.children && c.children.length" class="comment-reply-list">
+                  <view v-for="r in c.children" :key="r.id" class="comment-item comment-item-reply" @click.stop>
+                    <view class="comment-reply-text">
+                      <text class="comment-nick-mini">{{ r.nickname || '匿名' }}</text>
+                      <text v-if="r.reply_to_nickname" class="reply-at">回复 <text class="comment-nick-mini">{{ r.reply_to_nickname }}</text></text>
+                      <text class="reply-colon">：</text>
+                      <text><text v-if="!isTruncated(r)">{{ r.content }}</text><text v-else>{{ truncateText(r.content) }}</text><text v-if="isTruncated(r)" class="comment-expand" @click.stop="toggleExpand(r)">{{ r._expanded ? '收起' : '展开' }}</text></text>
+                    </view>
+                    <view class="comment-reply-actions">
+                      <text class="comment-reply-btn" @click.stop="startReply(r, c)">回复</text>
+                      <text v-if="myUserId && String(r.user_id) === String(myUserId)" class="comment-del" @click.stop="removeComment(r)">{{ t('commentDelete') }}</text>
+                    </view>
+                  </view>
+                  <view v-if="c.replies_total > c.children.length" class="comment-more-replies" @click.stop="loadMoreReplies(c)">
+                    查看全部 {{ c.replies_total }} 条回复
+                  </view>
+                </view>
+              </view>
             </view>
-            <text v-if="myUserId && String(c.user_id) === String(myUserId)" class="comment-del" @click.stop="removeComment(c)">{{ t('commentDelete') }}</text>
           </view>
         </scroll-view>
         <view class="comments-input-row" @click.stop>
-          <input class="comments-input" v-model="commentText" :placeholder="t('commentPlaceholder')" maxlength="500" confirm-type="send" @confirm="submitComment" @click.stop />
+          <view v-if="replyingTo" class="comment-replying-to">
+            回复 @{{ replyingToNick }}
+            <text class="reply-cancel" @click.stop="cancelReply">×</text>
+          </view>
+          <input
+            class="comments-input"
+            v-model="commentText"
+            :placeholder="replyingTo ? '回复 @' + replyingToNick : t('commentPlaceholder')"
+            maxlength="500"
+            confirm-type="send"
+            @confirm="submitComment"
+            @focus="onCommentFocus"
+            @blur="onCommentBlur"
+          />
           <button class="comments-send" :disabled="commentSubmitting || !commentText.trim()" @click.stop="submitComment">{{ t('commentSend') }}</button>
         </view>
       </view>
@@ -237,6 +278,9 @@ export default {
       commentText: '',
       commentsDramaId: null,
       myUserId: null,
+      replyingTo: null,
+      replyingToNick: '',
+      replyingToRoot: null,
       isDownloading: false,
       downloadProgress: 0,
       downloadedFilePath: '',
@@ -517,6 +561,13 @@ export default {
       if (this.progressSeconds > 0) this.saveHistory()
       this.feedIndex = index
       this.resetProgressState()
+      // 切集后评论按集独立，重置评论缓存
+      this.commentsDramaId = null
+      this.comments = []
+      this.commentsTotal = 0
+      this.commentCount = 0
+      this.cancelReply()
+      if (this.showComments) this.loadComments()
       this.$nextTick(() => {
         this.playActiveEpisode()
         this.sendOverlayUpdate()
@@ -532,7 +583,14 @@ export default {
       this.showSheet = false
       this.dramaId = id
       this.episodeId = null
+      // 切剧后重置评论
+      this.commentsDramaId = null
+      this.comments = []
+      this.commentsTotal = 0
+      this.commentCount = 0
+      this.cancelReply()
       await this.load()
+      if (this.showComments) this.loadComments()
     },
     resetProgressState() {
       this.progressSeconds = 0
@@ -759,17 +817,18 @@ export default {
     openComments() {
       this.showComments = true
       this.fetchMyUserId()
-      if (String(this.commentsDramaId || '') !== String(this.drama ? this.drama.id : '')) {
-        this.comments = []
-        this.commentsTotal = 0
-        this.loadComments()
-      }
+      this.loadComments()
     },
     loadComments() {
       if (!this.drama) return
-      this.commentsDramaId = this.drama.id
+      const dramaId = String(this.drama.id)
+      const episodeId = this.activeEpisode ? this.activeEpisode.id : null
+      // 缓存键含 episodeId，同一部剧不同集评论独立
+      const cacheKey = dramaId + '|' + (episodeId || '')
+      if (String(this.commentsDramaId || '') === cacheKey && this.comments.length > 0) return
+      this.commentsDramaId = cacheKey
       this.commentsLoading = true
-      api.dramaComments(this.drama.id).then(data => {
+      api.dramaComments(this.drama.id, episodeId).then(data => {
         this.comments = (data && data.records) || []
         this.commentsTotal = Number((data && data.total) || 0)
         this.commentCount = this.commentsTotal
@@ -787,39 +846,137 @@ export default {
     },
     closeComments() {
       this.showComments = false
+      this.blurCommentInput()
+      this.cancelReply()
+    },
+    onCommentFocus() {
+      // 评论输入框获焦 → 暂停视频
+      try { uni.createVideoContext('mainVideo', this).pause() } catch (_) {}
+      this.feedPaused = true
+    },
+    onCommentBlur() {
+      // 评论输入框失焦 → 恢复播放
+      try { uni.createVideoContext('mainVideo', this).play() } catch (_) {}
+      this.feedPaused = false
     },
     blurCommentInput() {
       // #ifdef APP-PLUS
       uni.hideKeyboard()
       // #endif
     },
-    submitComment() {
+    async submitComment() {
       const text = (this.commentText || '').trim()
       if (!text || this.commentSubmitting) return
       if (!this.ensureLogin()) return
       if (!this.drama) return
+      // 确保 myUserId 已获取（openComments 里是异步触发没 await，这里兜底）
+      await this.fetchMyUserId()
+      const dramaId = this.drama.id
+      const episodeId = this.activeEpisode ? this.activeEpisode.id : null
       this.commentSubmitting = true
-      api.addComment(this.drama.id, text, this.activeEpisode ? this.activeEpisode.id : null).then(comment => {
-        this.comments.unshift(comment)
-        this.commentsTotal += 1
-        this.commentCount = this.commentsTotal
+      try {
+        if (this.replyingTo) {
+          // 回复
+          const parentId = this.replyingTo.id
+          const replyToUserId = this.replyingTo.user_id
+          const parentOfParent = this.replyingToRoot || this.replyingTo
+          const rootId = parentOfParent.id
+          const reply = await api.replyComment(dramaId, episodeId, parentId, replyToUserId, text)
+          // 插入到根评论的 children
+          const root = this.comments.find(c => String(c.id) === String(rootId))
+          if (root) {
+            if (!root.children) root.children = []
+            root.children.push({ ...reply, reply_to_nickname: this.replyingTo.nickname || '匿名' })
+            root.replies_total = (root.replies_total || 0) + 1
+          }
+          this.cancelReply()
+        } else {
+          // 根评论
+          const comment = await api.addComment(dramaId, text, episodeId)
+          this.comments.unshift({ ...comment, children: [], replies_total: 0 })
+          this.commentsTotal += 1
+          this.commentCount = this.commentsTotal
+        }
         this.commentText = ''
         uni.showToast({ title: this.t('commentAdded'), icon: 'none' })
-      }).catch(err => {
+      } catch (err) {
         uni.showToast({ title: err.message, icon: 'none' })
-      }).finally(() => {
+      } finally {
         this.commentSubmitting = false
+      }
+    },
+    startReply(target, rootParent) {
+      // target = 被回复的评论/回复；rootParent = 其根评论（如果 target 本身就是根则为 null）
+      this.replyingTo = target
+      this.replyingToNick = target.nickname || '匿名'
+      this.replyingToRoot = rootParent || target
+      this.$nextTick(() => {
+        try {
+          uni.createVideoContext('mainVideo', this).pause()
+          this.feedPaused = true
+        } catch (_) {}
       })
     },
-    removeComment(comment) {
-      api.deleteComment(comment.id).then(() => {
-        this.comments = this.comments.filter(c => c.id !== comment.id)
-        this.commentsTotal = Math.max(0, this.commentsTotal - 1)
-        this.commentCount = this.commentsTotal
-        uni.showToast({ title: this.t('commentDeleted'), icon: 'none' })
-      }).catch(err => {
+    cancelReply() {
+      this.replyingTo = null
+      this.replyingToNick = ''
+      this.replyingToRoot = null
+    },
+    async loadMoreReplies(root) {
+      try {
+        const data = await api.dramaCommentReplies(root.id, 1, 100)
+        root.children = (data && data.records) || []
+        root.replies_total = Number((data && data.total) || root.replies_total || 0)
+      } catch (err) {
         uni.showToast({ title: err.message, icon: 'none' })
+      }
+    },
+    async removeComment(comment) {
+      uni.showModal({
+        title: '确认删除',
+        content: '删除后将从评论区消失,此操作不可恢复',
+        confirmText: '删除',
+        confirmColor: '#ff6b6b',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            await api.deleteComment(comment.id)
+            // 删根评论 or 删回复
+            let removed = false
+            for (const cc of this.comments) {
+              if (cc.children && cc.children.some(r => String(r.id) === String(comment.id))) {
+                cc.children = cc.children.filter(r => String(r.id) !== String(comment.id))
+                cc.replies_total = Math.max(0, (cc.replies_total || 0) - 1)
+                removed = true
+                break
+              }
+            }
+            if (!removed) {
+              this.comments = this.comments.filter(c => String(c.id) !== String(comment.id))
+              this.commentsTotal = Math.max(0, this.commentsTotal - 1)
+              this.commentCount = this.commentsTotal
+            }
+            uni.showToast({ title: this.t('commentDeleted'), icon: 'none' })
+          } catch (err) {
+            uni.showToast({ title: err.message, icon: 'none' })
+          }
+        }
       })
+    },
+    // 评论内容截断：超过 20 字显示"展开/收起"（与首页一致）
+    isTruncated(comment) {
+      if (!comment || !comment.content) return false
+      const maxLen = 20
+      return comment.content.length > maxLen && !comment._expanded
+    },
+    truncateText(content) {
+      if (!content) return ''
+      const maxLen = 20
+      if (content.length <= maxLen) return content
+      return content.substring(0, maxLen) + '…'
+    },
+    toggleExpand(comment) {
+      this.$set(comment, '_expanded', !comment._expanded)
     },
     formatCount(num) {
       const n = Number(num || 0)
@@ -1492,28 +1649,130 @@ page,
   color: rgba(255, 255, 255, 0.45);
 }
 
-.comments-input-row {
+/* 长评论展开/收起 */
+.comment-expand {
+  display: inline-block;
+  margin-left: 8rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* 评论元信息行 */
+.comment-meta {
   display: flex;
   align-items: center;
-  padding: 16rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
-  background-color: #111;
+  margin-top: 8rpx;
+}
+.comment-time {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+.comment-reply-btn {
+  flex-shrink: 0;
+  margin-left: 18rpx;
+  font-size: 22rpx;
+  color: #5b7fff;
+}
+.comment-reply-btn:active {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 嵌套回复（与首页 index.vue 完全一致） */
+.comment-reply-list {
+  margin-top: 14rpx;
+  padding: 16rpx 18rpx;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 16rpx;
+}
+.comment-item-reply {
+  padding: 10rpx 0;
+  flex-direction: column;
+  align-items: flex-start;
+  border-bottom: none;
+}
+.comment-item-reply + .comment-item-reply {
+  border-top: 1rpx solid rgba(255, 255, 255, 0.05);
+  padding-top: 12rpx;
+}
+.comment-reply-text {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.55;
+  word-break: break-all;
+}
+.comment-nick-mini {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #5b7fff;
+}
+.reply-at {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 4rpx;
+}
+.reply-colon {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+.comment-reply-actions {
+  display: flex;
+  align-items: center;
+  margin-top: 4rpx;
+}
+.comment-more-replies {
+  padding-top: 10rpx;
+  font-size: 22rpx;
+  color: #5b7fff;
+}
+
+/* 回复占位条（与首页一致） */
+.comment-replying-to {
+  position: absolute;
+  top: -48rpx;
+  left: 20rpx;
+  right: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 20rpx;
+  font-size: 22rpx;
+  color: #5b7fff;
+  background: #1a1a26;
+  border: 1rpx solid rgba(91, 127, 255, 0.4);
+  border-radius: 999rpx;
+}
+.reply-cancel {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 0 10rpx;
+}
+
+.comments-input-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 12rpx 24rpx calc(12rpx + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  background: #111118;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.06);
+  gap: 14rpx;
 }
 
 .comments-input {
   flex: 1;
-  height: 68rpx;
+  height: 64rpx;
   padding: 0 24rpx;
   font-size: 26rpx;
   color: #fff;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 999rpx;
 }
 
 .comments-send {
   width: 140rpx;
-  height: 68rpx;
-  line-height: 68rpx;
-  margin-left: 16rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  margin-left: 0;
   font-size: 26rpx;
   font-weight: 800;
   color: #11100d;
@@ -1523,7 +1782,7 @@ page,
 }
 
 .comments-send[disabled] {
-  opacity: 0.5;
+  opacity: 0.4;
   color: #11100d;
   background: linear-gradient(135deg, #ffe0a1, #f3b84d);
 }

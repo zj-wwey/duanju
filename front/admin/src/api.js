@@ -362,11 +362,37 @@ export const api = {
 
       const xhr = new XMLHttpRequest()
       xhr.open('PUT', presignedUrl, true)
+      // 超时保护:上传到 R2 后等待响应最多 60s,超过则按 ORB 兜底处理(字节已发出即视为成功)
+      const OVERALL_TIMEOUT_MS = 60_000
+      let resolved = false
+      const finishOk = (result) => {
+        if (resolved) return
+        resolved = true
+        resolve(result)
+      }
+      const finishErr = (err) => {
+        if (resolved) return
+        resolved = true
+        reject(err)
+      }
+      let timeoutTimer = setTimeout(() => {
+        if (resolved) return
+        // 超时但数据已全部发出 → 大概率是 CORS/ORB 问题,按成功处理
+        const loaded = xhr.upload && xhr.upload.loaded ? xhr.upload.loaded : totalSent
+        if (file && typeof file.size === 'number' && loaded >= file.size && file.size > 0) {
+          if (onProgress) onProgress({ lengthComputable: true, loaded: file.size, total: file.size })
+          finishOk({ status: 299, loaded, orbBypassed: true, timeoutBypassed: true })
+        } else {
+          finishErr(new Error(`上传到 R2 超时:已发出 ${loaded} 字节/共 ${file?.size || '未知'} 字节。可能原因:CORS 未放行管理端域名,或网络不稳定。`))
+        }
+      }, OVERALL_TIMEOUT_MS)
+      const clearTimer = () => { if (timeoutTimer) { clearTimeout(timeoutTimer); timeoutTimer = null } }
       if (signal) {
-        if (signal.aborted) { reject(new Error('UPLOAD_CANCELLED')); return }
+        if (signal.aborted) { clearTimer(); reject(new Error('UPLOAD_CANCELLED')); return }
         signal.addEventListener('abort', () => {
+          clearTimer()
           xhr.abort()
-          reject(new Error('UPLOAD_CANCELLED'))
+          finishErr(new Error('UPLOAD_CANCELLED'))
         })
       }
       // L3-fix (A): 显式设置 responseType=blob,绝不以默认文本方式读取跨源媒体 binary 的响应体。

@@ -13,13 +13,13 @@ import java.util.Map;
 public class DramaCommentServiceImpl extends ServiceImpl<DramaCommentMapper, DramaComment> implements DramaCommentService {
 
     @Override
-    public List<Map<String, Object>> roots(Long dramaId, int offset, int limit) {
-        return baseMapper.roots(dramaId, offset, limit);
+    public List<Map<String, Object>> roots(Long dramaId, Long episodeId, int offset, int limit) {
+        return baseMapper.roots(dramaId, episodeId, offset, limit);
     }
 
     @Override
-    public long countRoots(Long dramaId) {
-        return baseMapper.countRoots(dramaId);
+    public long countRoots(Long dramaId, Long episodeId) {
+        return baseMapper.countRoots(dramaId, episodeId);
     }
 
     @Override
