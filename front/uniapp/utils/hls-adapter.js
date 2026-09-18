@@ -94,7 +94,7 @@ export function cleanupVideo(videoEl) {
  * @param {Function} [onError] 错误回调
  * @returns {{ destroy: () => void, hls: any }}
  */
-export function setupVideo(videoEl, url, autoplay = true, onManifestParsed, onError) {
+export function setupVideo(videoEl, url, autoplay = true, onManifestParsed, onError, muted = false) {
   if (!videoEl || !url) return { destroy: () => {}, hls: null }
 
   // 清理旧实例
@@ -104,7 +104,7 @@ export function setupVideo(videoEl, url, autoplay = true, onManifestParsed, onEr
   if (!isHlsUrl(url)) {
     videoEl.src = url
     if (autoplay) {
-      videoEl.muted = true
+      videoEl.muted = muted
       try { videoEl.play().catch(() => {}) } catch (_) {}
     }
     return { destroy: () => {}, hls: null }
@@ -115,7 +115,7 @@ export function setupVideo(videoEl, url, autoplay = true, onManifestParsed, onEr
     // Safari/iOS 原生支持
     videoEl.src = url
     if (autoplay) {
-      videoEl.muted = true
+      videoEl.muted = muted
       try { videoEl.play().catch(() => {}) } catch (_) {}
     }
     return { destroy: () => {}, hls: null }
@@ -160,8 +160,14 @@ export function setupVideo(videoEl, url, autoplay = true, onManifestParsed, onEr
 
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
       if (autoplay) {
-        videoEl.muted = true
-        try { videoEl.play().catch(() => {}) } catch (_) {}
+        videoEl.muted = muted
+        videoEl.play().then(() => {
+          if (!muted) videoEl.muted = false
+        }).catch(() => {
+          // 浏览器阻止带声音自动播放，退回静音
+          videoEl.muted = true
+          try { videoEl.play().catch(() => {}) } catch (_) {}
+        })
       }
       onManifestParsed && onManifestParsed(hls, videoEl)
     })

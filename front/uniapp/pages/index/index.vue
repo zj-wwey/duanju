@@ -48,11 +48,11 @@
               :poster="item.cover_url"
               :autoplay="shouldAutoplay(item, index)"
               :loop="false"
-              :controls="false"
+              :controls="isFullScreen"
               :show-center-play-btn="false"
-              :show-fullscreen-btn="false"
-              :show-progress="false"
-              :show-play-btn="false"
+              :show-fullscreen-btn="isFullScreen"
+              :show-progress="isFullScreen"
+              :show-play-btn="isFullScreen"
               object-fit="contain"
               @play="videoReady"
               @pause="onVideoPause"
@@ -60,6 +60,7 @@
               @timeupdate="timeupdate"
               @ended="ended"
               @error="videoError"
+              @fullscreenchange="onFullScreenChange"
             >
               <cover-view class="video-tap-area" @tap="togglePlayback(item)"></cover-view>
               <!-- 点击视频时的播放/暂停反馈图标（cover-view 才能盖在 APP 原生 video 上） -->
@@ -143,6 +144,12 @@
                 <u-icon name="list-dot" color="#ffffff" size="56" />
                 <text>{{ t('details') }}</text>
               </view>
+            </view>
+
+            <!-- 全屏按钮：药丸样式，视频下方居中 -->
+            <view v-if="index === current && !isFullScreen && !showCommentPanel" class="fullscreen-pill" @click.stop="toggleFullScreen">
+              <text class="fullscreen-pill-icon">⛶</text>
+              <text class="fullscreen-pill-text">全屏观看</text>
             </view>
             <!-- #endif -->
           </view>
@@ -344,6 +351,7 @@ export default {
       MAX_PLAY_RETRY: 1,
       playRetryCount: 0,
       isLandscape: false,
+      isFullScreen: false,
       windowHeight: 0,
       windowWidth: 0,
       boundaryHintTimer: null,
@@ -594,6 +602,7 @@ export default {
         case 'details': this.goDetail(); break
         case 'episode': this.openShow(); break
         case 'tap': this.togglePlayback(this.videoList[this.current]); break
+        case 'fullscreen': this.toggleFullScreen(); break
         case 'seek': this.onOverlaySeek(e.data); break
         case 'seekEnd': this.onOverlaySeekEnd(); break
       }
@@ -811,14 +820,11 @@ export default {
       // #endif
       // 注意：不要在这里 this.current = newIndex，swiper 内部已经是 newIndex 了
       // :current 只用于初始加载时的定位，后续不回写避免循环触发
-      this.$set(this, 'current', newIndex)
-
       const item = this.videoList[newIndex]
       if (!item) return
-      // H5 端：立即设置 playingEpisodeId，避免 Vue 重渲染时预加载的 video 元素被销毁
-      // #ifdef H5
+      // 先设置 playingEpisodeId 再设置 current，避免中间状态导致 video 元素被销毁
       this.playingEpisodeId = item.episodeId
-      // #endif
+      this.$set(this, 'current', newIndex)
       this.num = item.episode_no || 1
       this.progressSeconds = 0
       this.commentCount = 0
@@ -876,7 +882,7 @@ export default {
     },
     // 当前正在播放的视频：渲染 video 元素并播放
     shouldShowVideo(item, index) {
-      return this.current === index && item && item.playback_url && this.playingEpisodeId === item.episodeId && !this.videoLoadError
+      return this.current === index && item && item.playback_url && !this.videoLoadError
     },
     // 预加载下一个视频：当前视频的下一集，有 playback_url，且尚未播放过
     shouldPreloadVideo(item, index) {
@@ -893,9 +899,9 @@ export default {
     isVideoPreload(item, index) {
       return this.shouldPreloadVideo(item, index)
     },
-    // 只有当前播放的视频才自动播放，预加载的不播
+    // 只有 playingEpisodeId 匹配的当前视频才自动播放
     shouldAutoplay(item, index) {
-      return this.shouldShowVideo(item, index)
+      return this.current === index && this.playingEpisodeId === item.episodeId && !this.videoLoadError
     },
     shouldShowVideoError(index) {
       return this.current === index && !!this.videoLoadError
@@ -946,9 +952,14 @@ export default {
 
       // 如果预加载已经创建了 HLS 实例，直接 play
       if (videoEl.__hls) {
-        videoEl.muted = true
-        try { videoEl.play().catch(() => {}) } catch (_) {}
+        videoEl.muted = false
+        videoEl.play().catch(() => {
+          // 浏览器阻止带声音播放，退回静音
+          videoEl.muted = true
+          try { videoEl.play().catch(() => {}) } catch (_) {}
+        })
         this._hlsHandle = { destroy: () => { try { videoEl.__hls.destroy() } catch (_) {} ; videoEl.__hls = null }, hls: videoEl.__hls }
+        this._prefetchHandle = null
         return
       }
 
@@ -1154,6 +1165,19 @@ export default {
         this._showPlayHint('play')
       }
     },
+    toggleFullScreen() {
+      const item = this.currentItem
+      if (!item) return
+      const ctx = uni.createVideoContext('myVideo' + item.episodeId, this)
+      if (this.isFullScreen) {
+        ctx.exitFullScreen()
+      } else {
+        ctx.requestFullScreen()
+      }
+    },
+    onFullScreenChange(e) {
+      this.isFullScreen = !!(e.detail && e.detail.fullScreen)
+    },
     _showPlayHint(type) {
       this.playHint = type
       if (this._playHintTimer) clearTimeout(this._playHintTimer)
@@ -1229,6 +1253,10 @@ export default {
       }
       // 否则滑到 Feed 中的下一个视频
       if (this.current < this.videoList.length - 1) {
+        const nextItem = this.videoList[this.current + 1]
+        if (nextItem) {
+          this.playingEpisodeId = nextItem.episodeId
+        }
         this.current += 1
       }
     },
@@ -2522,6 +2550,41 @@ page,
   right: 16rpx;
   top: 42%;
   z-index: 10;
+}
+
+/* 全屏按钮：药丸样式，与评论按钮同高 */
+.fullscreen-pill {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, 264rpx);
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 28rpx;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 999rpx;
+  pointer-events: auto;
+  transition: transform 0.18s ease;
+  backdrop-filter: blur(8rpx);
+}
+
+.fullscreen-pill:active {
+  transform: translate(-50%, 264rpx) scale(0.92);
+}
+
+.fullscreen-pill-icon {
+  font-size: 32rpx;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.fullscreen-pill-text {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
 }
 
 /* 彩色底座按钮：本页完整定义（H5 页面样式按页加载，不可依赖其他页面的全局样式） */

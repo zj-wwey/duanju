@@ -34,6 +34,11 @@
       </view>
     </view>
 
+    <view class="fullscreen-pill" @tap="emit('fullscreen')">
+      <text class="fullscreen-pill-icon">⛶</text>
+      <text class="fullscreen-pill-text">全屏观看</text>
+    </view>
+
     <view class="bottom">
       <text class="title">{{ dramaTitle }}</text>
       <text class="desc" v-if="episodeTitle">{{ episodeTitle }}</text>
@@ -176,6 +181,10 @@ font-family: 'PingFang SC', 'HarmonyOS Sans', 'Noto Sans SC', 'Source Han Sans S
 .back-text { font-size: 42rpx; font-weight: 300; color: rgba(255, 255, 255, 0.85); margin-top: -3rpx; }
 .actions { position: absolute; right: 16rpx; bottom: 260rpx; flex-direction: column; align-items: center; pointer-events: auto; }
 .action { width: 88rpx; margin-bottom: 28rpx; align-items: center; justify-content: center; }
+.fullscreen-pill { position: absolute; left: 375rpx; bottom: 500rpx; margin-left: -120rpx; flex-direction: row; align-items: center; justify-content: center; padding-left: 28rpx; padding-right: 28rpx; padding-top: 12rpx; padding-bottom: 12rpx; background-color: rgba(0, 0, 0, 0.6); border-radius: 999rpx; pointer-events: auto; }
+.fullscreen-pill:active { opacity: 0.6; }
+.fullscreen-pill-icon { font-size: 32rpx; color: #ffffff; text-align: center; pointer-events: none; margin-right: 8rpx; }
+.fullscreen-pill-text { font-size: 26rpx; font-weight: 700; color: #ffffff; text-align: center; pointer-events: none; }
 .action-icon { font-size: 60rpx; text-align: center; color: #ffffff; font-weight: 900; pointer-events: none; text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.5); }
 .action-label { font-size: 22rpx; color: rgba(255, 255, 255, 0.9); text-align: center; margin-top: 4rpx; pointer-events: none; text-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.4); }
 .bottom { position: absolute; left: 24rpx; right: 130rpx; bottom: 158rpx; pointer-events: auto; }

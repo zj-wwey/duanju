@@ -30,17 +30,18 @@
               :src="ep.playbackUrl"
               :poster="ep.coverUrl || coverOf(drama)"
               :autoplay="true"
-              :controls="false"
+              :controls="isFullScreen"
               :show-center-play-btn="false"
-              :show-fullscreen-btn="false"
-              :show-progress="false"
-              :show-play-btn="false"
+              :show-fullscreen-btn="isFullScreen"
+              :show-progress="isFullScreen"
+              :show-play-btn="isFullScreen"
               object-fit="contain"
               @timeupdate="timeupdate"
               @ended="ended"
               @error="videoError"
               @play="onVideoPlay"
               @pause="onVideoPause"
+              @fullscreenchange="onFullScreenChange"
             >
               <cover-view class="video-tap-area" @tap="togglePlayback"></cover-view>
               <!-- 播放/暂停反馈图标 -->
@@ -107,6 +108,12 @@
               <u-icon name="list-dot" color="#ffffff" size="56" />
               <text>{{ t('details') }}</text>
             </view>
+          </view>
+
+          <!-- 全屏按钮：药丸样式，视频下方居中 -->
+          <view v-if="!isFullScreen && !showComments && !showSheet" class="fullscreen-pill" @click.stop="toggleFullScreen">
+            <text class="fullscreen-pill-icon">⛶</text>
+            <text class="fullscreen-pill-text">全屏观看</text>
           </view>
 
           <!-- 底部信息栏：标题+简介+进度条+合集选集，贴视频画面底部 -->
@@ -301,6 +308,7 @@ export default {
       downloadProgress: 0,
       downloadedFilePath: '',
       isLandscape: false,
+      isFullScreen: false,
       windowHeight: 0,
       windowWidth: 0,
       boundaryHintTimer: null,
@@ -519,6 +527,7 @@ export default {
         case 'details': this.goDetail(); break
         case 'episode': this.openSheet(); break
         case 'tap': this.togglePlayback(); break
+        case 'fullscreen': this.toggleFullScreen(); break
         case 'seek': {
           const percent = e.data ? e.data.percent : 0
           this.draggingProgress = true
@@ -913,6 +922,17 @@ export default {
         this.feedPaused = true
         this._showPlayHint('play')
       }
+    },
+    toggleFullScreen() {
+      const ctx = uni.createVideoContext('mainVideo', this)
+      if (this.isFullScreen) {
+        ctx.exitFullScreen()
+      } else {
+        ctx.requestFullScreen()
+      }
+    },
+    onFullScreenChange(e) {
+      this.isFullScreen = !!(e.detail && e.detail.fullScreen)
     },
     _showPlayHint(type) {
       this.playHint = type
@@ -1538,6 +1558,41 @@ page,
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* 全屏按钮：药丸样式，与评论按钮同高 */
+.fullscreen-pill {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, 264rpx);
+  z-index: 15;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 28rpx;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 999rpx;
+  pointer-events: auto;
+  transition: transform 0.18s ease;
+  backdrop-filter: blur(8rpx);
+}
+
+.fullscreen-pill:active {
+  transform: translate(-50%, 264rpx) scale(0.92);
+}
+
+.fullscreen-pill-icon {
+  font-size: 32rpx;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.fullscreen-pill-text {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
 }
 
 .side-actions.is-landscape {
