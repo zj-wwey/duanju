@@ -87,18 +87,20 @@ front/uniapp/manifest.local.json
 *.tgz
 *.7z
 
-# ====== 归档与工具文件 ======
-archive/
-tools/
-docs/
-screen.png
-
-# ====== TRAE / IDE ======
-.trae/
-.agents/
-
 # ====== 其他 ======
 *.tmp
 *.temp
 .cache/
 *.local
+
+# ====== AI 工具目录 ======
+.trae/
+.agents/
+
+# ====== 二进制工具 ======
+tools/
+*.exe
+
+# ====== 归档与测试数据 ======
+archive/
+platform-tools/

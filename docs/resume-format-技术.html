@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简历项目描述 - 短剧流媒体平台</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f5f5f5;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.8;
+    padding: 40px 20px;
+    color: #1a1a1a;
+  }
+  .container { max-width: 800px; margin: 0 auto; }
+  .paper {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    padding: 36px 40px;
+  }
+  .section { margin-bottom: 24px; }
+  .section-label {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    background: #2c3e50;
+    padding: 2px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+  }
+  .tech-line {
+    font-size: 14px;
+    line-height: 2;
+  }
+  .tech-line strong { color: #2c3e50; }
+  .project-desc p {
+    font-size: 14px;
+    margin-bottom: 8px;
+    text-align: justify;
+  }
+  .project-desc p strong { color: #2c3e50; }
+  .resp-list {
+    list-style: none;
+    margin-left: 0;
+  }
+  .resp-list li {
+    font-size: 14px;
+    margin-bottom: 10px;
+    text-align: justify;
+    padding-left: 16px;
+    position: relative;
+  }
+  .resp-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #2c3e50;
+    font-weight: 700;
+  }
+  .resp-list li strong { color: #2c3e50; }
+  .tip-box {
+    margin-top: 28px;
+    padding: 16px 20px;
+    background: #f0f7ff;
+    border-left: 3px solid #409eff;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: #555;
+  }
+  .tip-box strong { color: #2c3e50; }
+  .tip-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #409eff;
+    margin-bottom: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="paper">
+
+<div class="section">
+  <span class="section-label">开发技术</span>
+  <p class="tech-line"><strong>SpringBoot 3.3</strong> + <strong>MyBatis-Plus</strong> + <strong>MySQL 8.0</strong> + <strong>Redis 7</strong> + <strong>JWT</strong> + <strong>AWS SDK S3 v2</strong> + <strong>Stripe SDK</strong> + <strong>Vue 3</strong> + <strong>Vite</strong> + <strong>Element Plus</strong> + <strong>ECharts</strong> + <strong>uni-app</strong> + <strong>hls.js</strong> + <strong>Docker Compose</strong> + <strong>Nginx</strong> + <strong>Cloudflare R2/Stream</strong> + <strong>FFmpeg</strong> + <strong>Git</strong></p>
+</div>
+
+<div class="section project-desc">
+  <span class="section-label">项目描述</span>
+  <p>• <strong>业务痛点</strong>：海外短剧市场爆发但门槛高，传统方案缺乏完整的积分解锁、多渠道支付与多语言运营能力，内容方难以快速落地全球化分发与变现闭环，存在接入成本高、支付渠道分散、视频存储与转码自建复杂等痛点。</p>
+  <p>• <strong>项目目标</strong>：全栈独立开发面向海外市场的短剧流媒体平台，基于 Java + Vue 双栈搭建前后端全链路架构，整合短剧Feed流分发、积分解锁、会员体系、多渠道支付、19种语言国际化等核心能力，实现从内容管理到用户变现到运营分析的完整商业闭环。</p>
+  <p>• <strong>核心功能</strong>：系统集成短剧Feed流播放、分集积分解锁/会员解锁、Stripe/PayPal/Apple IAP/Google Play四渠道支付、Cloudflare Stream+R2视频存储与HLS转码、自定义JWT双Token认证、RBAC权限管控、积分商城与自动续费、运营数据可视化看板、19种语言国际化与多币种汇率换算等全链路功能，有效提升平台全球化运营水平与变现效率。</p>
+</div>
+
+<div class="section">
+  <span class="section-label">责任描述</span>
+  <ul class="resp-list">
+    <li><strong>全栈架构独立搭建</strong>：从0到1独立完成前后端全链路开发——后端基于 SpringBoot+MyBatis-Plus 搭建 Controller-Service-Mapper 三层架构，设计29个REST控制器、30+Service、33个实体、22+张数据库表，全局异常处理器兜底 + DTO统一包结构管理；前端独立开发3个子项目共51个页面（uni-app移动端25页 / Vue3+Element Plus管理后台18页 / Vue3+Express官网8页），从数据库建模到前端交互全栈自主交付。</li>
+    <li><strong>多渠道支付与幂等保障</strong>：独立集成 Stripe Checkout、PayPal Orders、Apple StoreKit、Google Play Billing 四大支付渠道，设计统一 Webhook 回调验签机制（Stripe签名校验 / Apple JWT验签 / Google RTDN验证），通过数据库唯一索引（stripe_payment_intent_id、google_purchase_token 等）+ 事件日志 + 签名校验三层幂等保障防止重复发货，支撑积分充值、会员订阅、自动续费全链路变现闭环。</li>
+    <li><strong>视频存储与HLS转码</strong>：独立设计 StorageProvider 接口抽象层，基于 AWS SDK S3 v2 对接 Cloudflare R2 对象存储（Region.of("auto")），实现 presigned URL 直传与 Local/R2 存储环境变量热切换；基于 FFmpeg 搭建异步 HLS 转码服务，自定义独立线程池（可配核心数/队列容量/CallerRunsPolicy背压策略），对接 Cloudflare Stream Webhook 回写转码状态，为Feed流场景提供低延迟播放底座。</li>
+    <li><strong>认证安全与定时任务</strong>：独立实现自定义 JWT 双Token认证（HmacSHA256签名，Access 7天 + Refresh 30天），Redis 存储 Token 状态支持主动注销，RBAC权限注解 + 拦截器分层鉴权，启动安全校验器确保密钥长度≥32位；基于 @Scheduled 实现三类定时任务（每小时会员过期/续费处理、每日积分清理、每5分钟超时订单关闭），保障系统自动运营。</li>
+    <li><strong>前端工程化与国际化</strong>：独立搭建19种语言 i18n 体系，uni-app端动态加载JSON + RTL方向检测，管理后台 vue-i18n Composition API 懒加载，编写 sync/export/import CLI同步工具链保证三端翻译一致；移动端封装 Token自动刷新拦截器（401静默续期），管理后台 Composable状态管理 + ECharts数据看板（播放趋势/观众排名/集数到达率），Express BFF层限流 + SPA fallback。</li>
+    <li><strong>独立部署与DevOps交付</strong>：独立完成全链路部署——编写 Docker Compose 编排5服务（MySQL 8 / Redis 7 / Spring Boot API / Nginx / Node前端构建），服务间健康检查依赖链；配置 Nginx 多子域名HTTPS反向代理（srv/dash/web/cdn/r2 五个子域，TLS 1.2/1.3）+ Cloudflare CDN加速 + CORS白名单；编写 PowerShell/Shell 双平台自动化部署脚本（支持全量部署与增量热修复），接入 Actuator + Prometheus 指标监控，从开发到上线全流程自主交付。</li>
+  </ul>
+</div>
+
+<div class="tip-box">
+  <div class="tip-title">撰写说明</div>
+  <p>1. <strong>技术深度</strong>：每条都嵌入具体技术细节——JWT的HmacSHA256签名机制、R2的AWS SDK S3 v2 + Region.of("auto")、CallerRunsPolicy背压策略、TLS 1.2/1.3、三层幂等保障的具体唯一索引名，让面试官能追问切入点。</p>
+  <p>2. <strong>全栈广度</strong>：第1条覆盖"数据库→后端→前端三端→全链路交付"，第5条覆盖"i18n工具链→移动端拦截器→管理后台Composable→BFF限流"，前端技术不再是"用了Vue"而是深入到工程化方案。</p>
+  <p>3. <strong>独立部署</strong>：第6条单独成段且最详细，从Docker编排→Nginx配置→CDN→部署脚本→监控，强调"从开发到上线全流程自主交付"。</p>
+  <p>4. <strong>业务闭环</strong>：项目描述和责任描述都围绕"Feed流分发→解锁→支付变现→运营分析"展开，不是流水账式功能列举。</p>
+</div>
+
+</div>
+</div>
+</body>
+</html>

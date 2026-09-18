@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简历项目描述 - 短剧流媒体平台</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d28;
+    --border: #2a2d3a;
+    --text: #e4e4e7;
+    --muted: #9ca3af;
+    --accent: #f7c66a;
+    --accent2: #60a5fa;
+    --accent3: #34d399;
+    --accent4: #f472b6;
+    --code-bg: #15171f;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.7;
+    padding: 40px 20px;
+  }
+  .container { max-width: 920px; margin: 0 auto; }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent4));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 36px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2 .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(247,198,106,0.12);
+    font-size: 14px;
+  }
+  h3 { font-size: 16px; font-weight: 600; color: var(--accent2); margin-top: 20px; margin-bottom: 10px; }
+  p { margin-bottom: 12px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card.highlight {
+    border-left: 3px solid var(--accent);
+  }
+  .card.blue { border-left: 3px solid var(--accent2); }
+  .card.green { border-left: 3px solid var(--accent3); }
+  .card.pink { border-left: 3px solid var(--accent4); }
+  .tag-container { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    background: rgba(96,165,250,0.1);
+    color: var(--accent2);
+    border: 1px solid rgba(96,165,250,0.2);
+  }
+  .tag.gold { background: rgba(247,198,106,0.1); color: var(--accent); border-color: rgba(247,198,106,0.2); }
+  .tag.green { background: rgba(52,211,153,0.1); color: var(--accent3); border-color: rgba(52,211,153,0.2); }
+  .tag.pink { background: rgba(244,114,182,0.1); color: var(--accent4); border-color: rgba(244,114,182,0.2); }
+  ul { margin-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 6px; font-size: 14px; }
+  li strong { color: var(--accent); }
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    color: #c4c4c7;
+  }
+  .role-label {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+  .role-label.full { background: rgba(52,211,153,0.15); color: var(--accent3); }
+  .role-label.lead { background: rgba(247,198,106,0.15); color: var(--accent); }
+  .divider { height: 1px; background: var(--border); margin: 28px 0; }
+  .badge-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .badge {
+    text-align: center;
+    padding: 10px 16px;
+    border-radius: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    min-width: 100px;
+  }
+  .badge .num { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .badge .label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .tip {
+    background: rgba(96,165,250,0.06);
+    border: 1px solid rgba(96,165,250,0.15);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    color: var(--accent2);
+  }
+  .tip::before { content: "💡 "; }
+  .section-desc { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>短剧流媒体平台 (Duanju Master)</h1>
+<p class="subtitle">全栈独立开发 · Spring Boot + Vue 3 + uni-app + Docker · 2024-2026</p>
+
+<div class="badge-row">
+  <div class="badge"><div class="num">29</div><div class="label">后端Controller</div></div>
+  <div class="badge"><div class="num">30+</div><div class="label">Service层</div></div>
+  <div class="badge"><div class="num">22</div><div class="label">数据库表</div></div>
+  <div class="badge"><div class="num">19</div><div class="label">支持语言</div></div>
+  <div class="badge"><div class="num">4</div><div class="label">支付渠道</div></div>
+  <div class="badge"><div class="num">43+</div><div class="label">前端页面</div></div>
+</div>
+
+<!-- ============ 简历精简版 ============ -->
+<h2><span class="num">A</span>简历精简版（适合一页纸简历）</h2>
+
+<div class="card highlight">
+<p><span class="role-label full">全栈独立开发</span><strong>海外短剧流媒体平台</strong> — 从0到1独立完成的产品级平台，覆盖19个国家/地区、支持14+币种，实现短剧Feed流分发 → 积分/会员解锁 → 多渠道变现的完整商业闭环。</p>
+
+<p><strong>技术栈：</strong>Java 17 / Spring Boot 3.3 / MyBatis-Plus / MySQL 8 / Redis 7 / Vue 3 / Vite / Element Plus / uni-app / Docker Compose / Nginx / Cloudflare R2+Stream</p>
+
+<ul>
+  <li><strong>全栈架构 0→1：</strong>独立完成前后端全链路开发——后端29个API控制器、30+Service、33个实体的三层架构，前端3个子项目共51个页面（uni-app移动端 / Vue3管理后台 / Express BFF官网），22+张数据库表从设计到迁移全部主导</li>
+  <li><strong>多渠道变现引擎：</strong>集成 Stripe / PayPal / Apple IAP / Google Play 四大支付渠道，统一Webhook验签 + 数据库唯一索引三层幂等保障，支撑积分充值、会员订阅、自动续费、积分商城全链路变现闭环</li>
+  <li><strong>视频基础设施自建：</strong>Cloudflare Stream + R2 对象存储 + 本地三级存储抽象层（环境变量热切换），FFmpeg异步HLS转码独立线程池 + presigned URL直传，为短剧Feed流场景提供低延迟播放底座</li>
+  <li><strong>全球化运营能力：</strong>19种语言动态加载 + RTL适配 + 14+币种汇率实时换算，C端和管理后台同步多语言，自定义JWT双Token认证 + RBAC权限注解，支撑跨国多角色运营</li>
+  <li><strong>DevOps交付闭环：</strong>Docker Compose编排5服务一键部署，Nginx多子域名HTTPS反代 + Cloudflare CDN加速，Spring Boot Actuator + Prometheus监控，PowerShell/Shell双平台自动化部署脚本，从开发到上线全流程自主交付</li>
+</ul>
+</div>
+
+<div class="tip" style="margin-top:-4px">
+  优化要点：每条以<strong>业务能力命名</strong>（变现引擎/全球化运营/交付闭环），而非纯技术名词；<strong>用数字佐证规模</strong>（29/30+/51/22+/4/19/14+）；<strong>强调独立完成</strong>和<strong>商业闭环</strong>，体现全栈深度与业务理解力。
+</div>
+
+<!-- ============ 简历详细版 ============ -->
+<h2><span class="num">B</span>简历详细版（适合项目深挖 / 作品集）</h2>
+
+<h3>项目概述</h3>
+<div class="card">
+<p>独立设计与开发的<strong>海外短剧流媒体平台</strong>，对标 TikTok/Douyin 短剧业务模式。用户可通过移动端App浏览短剧Feed流、观看分集内容、通过积分或会员解锁付费剧集。平台后端提供完整的内容管理、用户运营、支付结算、数据分析能力，管理后台支持内容编排、订单管理、用户管理、数据看板等功能。</p>
+</div>
+
+<h3>技术栈</h3>
+<div class="card blue">
+<div class="tag-container">
+  <span class="tag gold">Java 17</span>
+  <span class="tag gold">Spring Boot 3.3.5</span>
+  <span class="tag gold">MyBatis-Plus 3.5.8</span>
+  <span class="tag gold">MySQL 8.0</span>
+  <span class="tag gold">Redis 7</span>
+  <span class="tag">Vue 3</span>
+  <span class="tag">Vite 5</span>
+  <span class="tag">Element Plus</span>
+  <span class="tag">ECharts 6</span>
+  <span class="tag">vue-i18n</span>
+  <span class="tag green">uni-app</span>
+  <span class="tag green">uView UI</span>
+  <span class="tag green">hls.js</span>
+  <span class="tag pink">Docker Compose</span>
+  <span class="tag pink">Nginx</span>
+  <span class="tag pink">Cloudflare R2</span>
+  <span class="tag pink">Cloudflare Stream</span>
+  <span class="tag pink">FFmpeg</span>
+  <span class="tag pink">Prometheus</span>
+</div>
+<div class="tag-container">
+  <span class="tag">Stripe SDK</span>
+  <span class="tag">PayPal API</span>
+  <span class="tag">Apple StoreKit</span>
+  <span class="tag">Google Play Billing</span>
+  <span class="tag">AWS SDK S3 v2</span>
+  <span class="tag">JWT</span>
+  <span class="tag">RBAC</span>
+  <span class="tag">HLS</span>
+  <span class="tag">express-rate-limit</span>
+  <span class="tag">nodemailer</span>
+</div>
+</div>
+
+<h3>核心职责与技术实现</h3>
+
+<div class="card highlight">
+<h3 style="margin-top:0">1. 后端架构设计</h3>
+<p>采用标准 <strong>Controller → Service → Mapper</strong> 三层分层架构，所有业务逻辑集中在Service层（@Transactional），Controller仅负责参数校验和路由委托。</p>
+<ul>
+  <li>设计 <strong>29个REST控制器</strong>，覆盖C端用户API、管理后台API、公开API三类</li>
+  <li>实现 <strong>30+Service类</strong>，包含业务编排层和实体数据访问层，依赖关系构成DAG无环图</li>
+  <li>定义 <strong>33个实体类 + 33个Mapper接口</strong>，使用MyBatis-Plus BaseMapper简化CRUD</li>
+  <li>统一 <strong>DTO包结构</strong>（dto/auth, dto/admin, dto/order, dto/payment等），请求/响应对象分离</li>
+  <li>全局异常处理器 <code>ApiExceptionHandler</code> 兜底，生产环境不暴露异常原始消息</li>
+</ul>
+</div>
+
+<div class="card green">
+<h3 style="margin-top:0">2. 认证与权限系统</h3>
+<ul>
+  <li><strong>自定义JWT双Token机制：</strong>Access Token (7天) + Refresh Token (30天)，使用HmacSHA256签名</li>
+  <li><strong>Redis管理Token状态：</strong>Key格式 <code>auth:access:{jti}</code> / <code>auth:refresh:{jti}</code>，支持主动注销</li>
+  <li><strong>RBAC权限注解：</strong>自定义 <code>@RequiresPermission("content:manage")</code> 注解，AdminInterceptor校验管理员身份</li>
+  <li><strong>启动安全校验：</strong>密钥长度≥32字符，生产环境禁止弱密钥，环境变量注入所有密钥</li>
+  <li><strong>多角色体系：</strong>SUPER_ADMIN / CONTENT_OPERATOR / USER_OPERATOR 三类角色</li>
+</ul>
+</div>
+
+<div class="card pink">
+<h3 style="margin-top:0">3. 多渠道支付集成</h3>
+<p>统一对接 <strong>4种支付渠道</strong>，覆盖Web端和移动端全场景：</p>
+<ul>
+  <li><strong>Stripe：</strong>Checkout Session创建支付链接，Webhook验签处理支付成功事件</li>
+  <li><strong>PayPal：</strong>Orders API创建订单 → Capture捕获 → Webhook回调确认</li>
+  <li><strong>Apple IAP：</strong>App Store Server API交易校验，StoreKit通知处理（S2S）</li>
+  <li><strong>Google Play：</strong>Google Play Developer API购买验证，RTDN实时通知处理</li>
+  <li><strong>幂等保障：</strong>数据库唯一索引 <code>uk_order_stripe_pi</code>、<code>uk_order_google_purchase_token</code>、<code>uk_order_paypal_payment_id</code> 防止重复发货</li>
+  <li><strong>统一Webhook入口：</strong><code>/api/webhooks/{channel}/notify</code> 集中处理回调，下游验签</li>
+  <li><strong>支付事件日志：</strong>PaymentEventLogService记录全链路支付事件</li>
+</ul>
+</div>
+
+<div class="card blue">
+<h3 style="margin-top:0">4. 视频存储与转码基础设施</h3>
+<ul>
+  <li><strong>存储抽象层：</strong><code>StorageProvider</code>接口 + <code>LocalStorageProvider</code> / <code>R2StorageProvider</code> 双实现，环境变量切换</li>
+  <li><strong>Cloudflare R2：</strong>使用 AWS SDK S3 v2 对接，<code>Region.of("auto")</code>，presigned URL直传</li>
+  <li><strong>Cloudflare Stream：</strong>视频上传、查询、删除、签名URL生成，Webhook回写转码状态</li>
+  <li><strong>FFmpeg HLS转码：</strong>异步线程池 <code>hlsTranscodeExecutor</code>（独立核心数/队列容量配置），CallerRunsPolicy背压</li>
+  <li><strong>批量上传：</strong>VPS中转批量上传服务，支持并发控制与进度查询</li>
+</ul>
+</div>
+
+<div class="card green">
+<h3 style="margin-top:0">5. 会员与积分体系</h3>
+<ul>
+  <li><strong>四级会员：</strong>NONE / SILVER / GOLD / DIAMOND，不同积分倍率</li>
+  <li><strong>积分来源：</strong>签到、广告激励、观看时长、分享邀请、评论奖励，统一通过 <code>PointService.addPoints()</code> 入口</li>
+  <li><strong>积分过期：</strong>批次化管理 + 定时清理（每日00:30执行）</li>
+  <li><strong>VIP系统：</strong>会员兑换、自动续费订阅（Stripe/PayPal），定时任务每小时处理续费</li>
+  <li><strong>积分商城：</strong>商品管理、兑换、发货、订单管理</li>
+  <li><strong>解锁机制：</strong>单集解锁/整剧解锁，统一 <code>UnlockService.isEpisodeAccessible()</code> 校验</li>
+</ul>
+</div>
+
+<div class="card pink">
+<h3 style="margin-top:0">6. 前端多端开发</h3>
+<ul>
+  <li><strong>移动端 (uni-app + Vue 2)：</strong>25+页面，uView UI 70+组件，hls.js视频播放，Token自动刷新拦截器，事件驱动状态管理（uni.$emit/$on）</li>
+  <li><strong>管理后台 (Vue 3 + Vite + Element Plus)：</strong>18页面，ECharts数据看板（播放趋势/观众排名/集数到达率），vue-i18n国际化，Composable状态管理，100+API方法封装</li>
+  <li><strong>KYC官网 (Vue 3 + Express)：</strong>SSR式BFF架构，Express托管静态文件+SPA fallback，express-rate-limit限流，nodemailer邮件通知</li>
+  <li><strong>共享层：</strong>19种语言JSON翻译文件，货币/格式化/校验工具函数统一复用</li>
+  <li><strong>i18n脚本：</strong>翻译同步、导出、导入、校验CLI工具链</li>
+</ul>
+</div>
+
+<div class="card blue">
+<h3 style="margin-top:0">7. DevOps与部署</h3>
+<ul>
+  <li><strong>Docker Compose编排：</strong>5服务（MySQL 8 / Redis 7 / Spring Boot API / Nginx / admin-build），健康检查依赖链</li>
+  <li><strong>Nginx多子域名：</strong>srv(API) / dash(管理后台) / web(H5) / cdn(静态资源) / r2(R2代理)，HTTPS TLS 1.2/1.3</li>
+  <li><strong>CORS白名单：</strong>仅允许平台子域名跨域，禁止通配符</li>
+  <li><strong>自动化部署：</strong>PowerShell + Shell双平台脚本，支持全量部署和增量热修复</li>
+  <li><strong>监控：</strong>Spring Boot Actuator + Prometheus metrics暴露</li>
+  <li><strong>Cloudflare Tunnel：</strong>本地开发隧道调试</li>
+</ul>
+</div>
+
+<div class="card highlight">
+<h3 style="margin-top:0">8. 定时任务与运维</h3>
+<ul>
+  <li><strong>每小时：</strong>会员过期处理、VIP记录清理、自动续费执行</li>
+  <li><strong>每日00:30：</strong>过期积分批量清理</li>
+  <li><strong>每5分钟：</strong>超时未支付订单自动关闭</li>
+  <li><strong>操作日志：</strong>管理后台关键操作全记录，支持审计追溯</li>
+  <li><strong>数据看板：</strong>仪表盘概览、短剧排行、播放趋势、观众分析、集数到达率</li>
+</ul>
+</div>
+
+<!-- ============ 面试话术 ============ -->
+<h2><span class="num">C</span>面试高频问答准备</h2>
+
+<div class="card">
+<h3 style="margin-top:0">Q1: 你在这个项目中的角色是什么？</h3>
+<p><strong>答：</strong>我是这个项目的全栈独立开发者，从0到1完成了后端架构设计、前端多端开发、数据库设计、DevOps部署配置的全部工作。后端29个API控制器、30+Service、33个数据实体均由我独立设计和实现。前端涵盖uni-app移动端、Vue 3管理后台和Vue 3官网三个子项目。同时负责Docker编排、Nginx配置、Cloudflare CDN/R2/Stream对接和自动化部署脚本编写。</p>
+</div>
+
+<div class="card">
+<h3 style="margin-top:0">Q2: 你们的支付系统是怎么设计的？如何保证幂等？</h3>
+<p><strong>答：</strong>我们接入了4种支付渠道（Stripe、PayPal、Apple IAP、Google Play），统一通过 <code>/api/webhooks/{channel}/notify</code> 入口接收回调。幂等保障分三层：1）数据库层——每个渠道有唯一索引（如 stripe_payment_intent_id、google_purchase_token 等），重复回调直接被唯一约束拦截；2）应用层——PaymentEventLogService记录全链路事件，处理前先查状态；3）Webhook验签——Stripe用 webhook secret签名校验，Apple用JWT验签，Google用RTDN签名校验，确保回调来源可信。</p>
+</div>
+
+<div class="card">
+<h3 style="margin-top:0">Q3: 视频转码是怎么做的？</h3>
+<p><strong>答：</strong>视频处理分两条路径。主路径对接 Cloudflare Stream——上传原始视频后由Cloudflare自动转码为HLS多码率流，我们通过Webhook接收转码完成通知并回写数据库。备用路径是本地FFmpeg异步转码——配置了独立的 <code>hlsTranscodeExecutor</code> 线程池，支持自定义核心数、最大线程数和队列容量，队列满时使用 CallerRunsPolicy 背压策略防止OOM。转码完成后生成 m3u8 播放列表，前端使用 hls.js 播放。</p>
+</div>
+
+<div class="card">
+<h3 style="margin-top:0">Q4: 认证方案为什么用自定义JWT而不是Spring Security？</h3>
+<p><strong>答：</strong>需求上需要同时支持C端用户和管理员两套认证体系，且需要双Token（Access + Refresh）方案。自定义JWT让我能精确控制Token的payload结构（sub/role/type/jti/exp），配合Redis存储Token状态（auth:access:{jti}），既支持主动注销，又能在Refresh时验证Refresh Token是否仍然有效。整体代码量不大但控制力强，启动时还有安全校验器确保密钥长度≥32字符、生产环境禁止弱密钥。</p>
+</div>
+
+<div class="card">
+<h3 style="margin-top:0">Q5: 多语言是怎么实现的？</h3>
+<p><strong>答：</strong>19种语言，前端和后端各有方案。后端通过 <code>LocaleInterceptor</code> 从请求头解析 locale，<code>I18nService</code> 返回对应语言的错误码和提示。前端有三套：uni-app端动态加载JSON翻译文件 + RTL方向检测；管理后台用 vue-i18n Composition API + 懒加载；共享层提取公共翻译文件和工具函数。还有一套CLI脚本（sync-i18n / export / import）用于翻译文件同步和校验，保证三端翻译一致性。</p>
+</div>
+
+<div class="card">
+<h3 style="margin-top:0">Q6: 你们的服务怎么部署的？</h3>
+<p><strong>答：</strong>Docker Compose编排5个服务：MySQL 8（utf8mb4、健康检查）、Redis 7（AOF持久化）、Spring Boot API（依赖MySQL和Redis健康检查后启动）、admin-build（一次性Node容器构建管理后台）、Nginx（反代API + 托管前端静态文件）。Nginx配置了多子域名：srv.marastel.com(API)、dash.marastel.com(管理后台)、web.marastel.com(H5)、cdn.marastel.com(静态资源+R2代理)，全部HTTPS TLS 1.2/1.3。部署脚本用PowerShell和Shell双写，支持全量部署和增量热修复。</p>
+</div>
+
+<!-- ============ 技术亮点速查 ============ -->
+<h2><span class="num">D</span>技术亮点速查表</h2>
+
+<div class="card">
+<p class="section-desc">面试时可快速引用的关键数字与亮点：</p>
+
+<table style="width:100%; border-collapse: collapse; font-size: 13px;">
+  <thead>
+    <tr style="border-bottom: 2px solid var(--border);">
+      <th style="text-align:left; padding: 8px 12px; color: var(--accent);">维度</th>
+      <th style="text-align:left; padding: 8px 12px; color: var(--accent);">亮点</th>
+      <th style="text-align:left; padding: 8px 12px; color: var(--accent);">规模/数据</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom: 1px solid var(--border);">
+      <td style="padding: 8px 12px;">后端规模</td>
+      <td style="padding: 8px 12px;">Controller / Service / Entity / Mapper</td>
+      <td style="padding: 8px 12px;">29 / 30+ / 33 / 33</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border);">
+      <td style="padding: 8px 12px;">数据库表</td>
+      <td style="padding: 8px 12px;">核心业务表（含支付幂等唯一索引）</td>
+      <td style="padding: 8px 12px;">22+ 表</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border);">
+      <td style="padding: 8px 12px;">前端页面</td>
+      <td style="padding: 8px 12px;">uni-app + Admin + KYC</td>
+      <td style="padding: 8px 12px;">25 + 18 + 8 = 51页</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border);">
+      <td style="padding: 8px 12px;">国际化</td>
+      <td style="padding: 8px 12px;">动态加载 + RTL + CLI同步</td>
+      <td style="padding: 8px 12px;">19种语言</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border);">
+      <td style="padding: 8px 12px;">支付渠道</td>
+      <td style="padding: 8px 12px;">Stripe/PayPal/Apple/Google + Webhook验签</td>
+      <td style="padding: 8px 12px;">4渠道</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border);">
+      <td style="padding: 8px 12px;">存储方案</td>
+      <td style="padding: 8px 12px;">R2 + Stream + Local 三级抽象</td>
+      <td style="padding: 8px 12px;">3 Provider</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border);">
+      <td style="padding: 8px 12px;">Docker编排</td>
+      <td style="padding: 8px 12px;">MySQL/Redis/API/Nginx/Build</td>
+      <td style="padding: 8px 12px;">5服务</td>
+    </tr>
+    <tr style="border-bottom: 1px solid var(--border);">
+      <td style="padding: 8px 12px;">定时任务</td>
+      <td style="padding: 8px 12px;">会员过期/积分清理/订单超时/自动续费</td>
+      <td style="padding: 8px 12px;">3类Cron</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 12px;">多币种</td>
+      <td style="padding: 8px 12px;">USD/CNY/JPY/KRW/THB/VND/EUR等</td>
+      <td style="padding: 8px 12px;">14+币种</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ============ 写法建议 ============ -->
+<h2><span class="num">E</span>简历写法建议</h2>
+
+<div class="card highlight">
+<h3 style="margin-top:0">关键原则</h3>
+<ul>
+  <li><strong>用数字说话：</strong>29个控制器、30+Service、4种支付渠道、19种语言、22+表——这些数字让简历有说服力</li>
+  <li><strong>突出难点：</strong>多渠道支付幂等、HLS异步转码、自定义JWT双Token、存储抽象层切换——这些是技术深度</li>
+  <li><strong>强调全栈：</strong>从数据库设计到前端多端开发到Docker部署，展示全链路能力</li>
+  <li><strong>避免流水账：</strong>不要列举所有功能点，挑3-5个最有技术含量的深入写</li>
+</ul>
+</div>
+
+<div class="card blue">
+<h3 style="margin-top:0">如果面试官追问"你做了什么"</h3>
+<p>建议用 <strong>STAR法则</strong> 回答：</p>
+<ul>
+  <li><strong>S(Situation)：</strong>海外短剧市场爆发，需要快速搭建支持多语言、多支付渠道的流媒体平台</li>
+  <li><strong>T(Task)：</strong>独立完成全栈开发，包括后端架构、前端三端、数据库设计、DevOps部署</li>
+  <li><strong>A(Action)：</strong>设计三层架构+自定义JWT认证；集成4种支付渠道+Webhook验签幂等；对接Cloudflare R2/Stream+FFmpeg转码；开发19种语言国际化+多币种汇率；Docker Compose编排+Nginx多子域名部署</li>
+  <li><strong>R(Result)：</strong>平台覆盖19个国家/地区，支持14+币种，4种支付渠道无缝接入，管理后台数据看板实时运营</li>
+</ul>
+</div>
+
+<div class="tip">
+  简历上建议只放 <strong>精简版</strong>（Section A），控制在5-6行。面试时用 <strong>详细版</strong>（Section B）展开，配合 <strong>面试问答</strong>（Section C）应对深挖。如果面试官让你"介绍一下这个项目"，用 <strong>STAR法则</strong>（Section E）组织语言。
+</div>
+
+</div>
+</body>
+</html>
