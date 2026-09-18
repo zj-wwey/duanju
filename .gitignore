@@ -87,6 +87,16 @@ front/uniapp/manifest.local.json
 *.tgz
 *.7z
 
+# ====== 归档与工具文件 ======
+archive/
+tools/
+docs/
+screen.png
+
+# ====== TRAE / IDE ======
+.trae/
+.agents/
+
 # ====== 其他 ======
 *.tmp
 *.temp

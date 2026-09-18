@@ -1,0 +1,18 @@
+:root {
+  --bg-main: #0A0908;
+  --bg-soft: #171513;
+  --bg-card: #1E1C19;
+  --primary: #C86D26;
+  --primary-hover: #D97E3A;
+  --gold: #D4AF68;
+  --gold-soft: rgba(212, 175, 104, 0.65);
+  --gold-muted: rgba(212, 175, 104, 0.18);
+  --text-main: #EAE6E1;
+  --text-soft: #A89F91;
+  --text-muted: #6F6559;
+  --border: #342E27;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --max-width: 1200px;
+}

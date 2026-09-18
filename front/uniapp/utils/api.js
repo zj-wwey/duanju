@@ -167,6 +167,9 @@ export const api = {
   deleteOrder(orderNo) {
     return request({ url: '/user/orders/' + encodeURIComponent(orderNo), method: 'DELETE' })
   },
+  cancelOrder(orderNo) {
+    return request({ url: '/user/orders/' + encodeURIComponent(orderNo) + '/cancel', method: 'POST' })
+  },
   adReward(adSlot = 'default', traceId) {
     return request({ url: '/user/ad-reward', method: 'POST', data: { adSlot, traceId: traceId || String(Date.now()) } })
   },

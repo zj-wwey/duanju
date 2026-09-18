@@ -2,6 +2,7 @@
   <view class="page" :class="{ 'is-landscape': isLandscape }">
     <!-- #ifndef APP-PLUS -->
     <view class="topbar" v-if="!isLandscape">
+      <view class="topbar-side"></view>
       <view class="feed-tabs">
         <view
           v-for="tab in feedTabs"
@@ -11,7 +12,7 @@
           @tap.stop="selectFeedTab(tab)"
         >{{ tab.label }}</view>
       </view>
-      <picker :range="localeNames" :value="localeIndex" @change="changeLocale">
+      <picker class="topbar-side" :range="localeNames" :value="localeIndex" @change="changeLocale">
         <view class="language">{{ currentLocaleShort }}</view>
       </picker>
     </view>
@@ -21,7 +22,7 @@
       v-if="videoList.length"
       class="swipers"
       :class="{ 'is-landscape': isLandscape }"
-      :style="{ height: (isLandscape ? windowHeight + 'px' : 'calc(' + windowHeight + 'px - env(safe-area-inset-top) - 170rpx)') }"
+      :style="{ height: (isLandscape ? windowHeight + 'px' : 'calc(' + windowHeight + 'px - 104rpx - 88rpx - env(safe-area-inset-top))') }"
       :current="current"
       :vertical="true"
       :indicator-dots="false"
@@ -33,18 +34,19 @@
       @touchend="onSwiperTouchEnd"
     >
       <swiper-item v-for="(item, index) in videoList" :key="item.episodeId">
-        <view class="feed-column" :style="{ height: (isLandscape ? windowHeight + 'px' : 'calc(' + windowHeight + 'px - env(safe-area-inset-top) - 170rpx)') }">
+        <view class="feed-column" :style="{ height: (isLandscape ? windowHeight + 'px' : 'calc(' + windowHeight + 'px - 104rpx - 88rpx - env(safe-area-inset-top))') }">
           <!-- 上半：视频区（评论区收起时占满整列） -->
           <view class="video-area" :style="{ height: videoAreaHeight }">
             <!-- 模糊封面背景：填充视频 letterbox 黑边（H5 端可见） -->
             <view class="video-bg-fill" :style="{ backgroundImage: 'url(' + (item.cover_url || '') + ')' }" />
             <video
-              v-if="shouldShowVideo(item, index) && !(show && index === current)"
+              v-if="shouldRenderVideo(item, index)"
               class="swipers-items-video"
+              :class="{ 'video-hidden': isVideoHidden(item, index) || isVideoPreload(item, index) }"
               :id="'myVideo' + item.episodeId"
               :src="item.playback_url"
               :poster="item.cover_url"
-              :autoplay="true"
+              :autoplay="shouldAutoplay(item, index)"
               :loop="false"
               :controls="false"
               :show-center-play-btn="false"
@@ -68,20 +70,7 @@
                 />
               </cover-view>
               <!-- #ifndef APP-PLUS -->
-              <!-- H5/小程序端进度条（APP 端由 index_overlay.nvue 原生层实现） -->
-              <cover-view
-                v-if="index === current"
-                class="video-progress-bar"
-                @touchstart="onProgressTouchStart"
-                @touchmove="onProgressTouchMove"
-                @touchend="onProgressTouchEnd"
-              >
-                <cover-view class="video-progress-time">{{ formatCurrentTime }}</cover-view>
-                <cover-view class="video-progress-track"></cover-view>
-                <cover-view class="video-progress-fill" :style="{ width: progressPercent + '%' }"></cover-view>
-                <cover-view class="video-progress-thumb" :style="{ left: progressPercent + '%' }"></cover-view>
-                <cover-view class="video-progress-time video-progress-time-right">{{ formatTotalTime }}</cover-view>
-              </cover-view>
+              <!-- H5/小程序端进度条（放在 video 外面用 view overlay） -->
               <!-- #endif -->
             </video>
             <view v-else class="poster-stage" @click="playCurrent(item)">
@@ -105,31 +94,53 @@
             <view class="swipers-items-info">
               <view class="swipers-items-info-author" v-if="item.author_name">{{ item.author_name }}</view>
               <view class="swipers-items-info-title">{{ item.title }}</view>
-              <view class="swipers-items-info-content">{{ item.description }}</view>
+              <view class="desc-row">
+                <view class="swipers-items-info-content" :class="{ expanded: descExpanded }">{{ item.description }}</view>
+                <view class="desc-more-btn" @click.stop="descExpanded = !descExpanded">{{ descExpanded ? '收起' : '更多' }}</view>
+              </view>
               <view class="swipers-items-info-num" @click="openShow(item)">
                 {{ t('collectionEntry', { num: item.episode_no, total: item.total_episodes }) }}
+              </view>
+              <!-- 进度条：紧跟在合集选集入口下方（H5/小程序端） -->
+              <view
+                v-if="index === current && !isDownloading"
+                class="video-progress-bar-h5"
+                @touchstart.stop.prevent="onProgressTouchStart"
+                @touchmove.stop.prevent="onProgressTouchMove"
+                @touchend.stop="onProgressTouchEnd"
+                @mousedown.stop.prevent="onProgressTouchStart"
+                @mousemove.stop.prevent="onProgressTouchMove"
+                @mouseup.stop="onProgressTouchEnd"
+                @mouseleave.stop="onProgressTouchEnd"
+              >
+                <text class="video-progress-time">{{ formatCurrentTime }}</text>
+                <view class="video-progress-track">
+                  <view class="video-progress-fill" :style="{ width: progressPercent + '%' }"></view>
+                  <view class="video-progress-thumb" :style="{ left: progressPercent + '%' }"></view>
+                </view>
+                <text class="video-progress-time video-progress-time-right">{{ formatTotalTime }}</text>
               </view>
             </view>
 
             <view class="swipers-items-right">
               <view class="action" @click.stop="toggleFavorite">
-                <text style="color:#0000ff;font-size:46rpx;">VUE</text>
+                <u-icon :name="item.favorite ? 'bookmark-fill' : 'bookmark'" size="56" :color="item.favorite ? '#ff4d67' : '#ffffff'" />
                 <text :style="{ color: item.favorite ? '#ff4d67' : 'rgba(255,255,255,0.9)' }">{{ item.favorite ? t('favorited') : t('favorite') }}</text>
               </view>
               <view class="action" @click.stop="toggleLike">
-                <u-icon :name="item.liked ? 'thumb-up-fill' : 'thumb-up'" size="46" :color="item.liked ? '#f3b84d' : '#ffffff'" />
+                <u-icon :name="item.liked ? 'thumb-up-fill' : 'thumb-up'" size="56" :color="item.liked ? '#f3b84d' : '#ffffff'" />
                 <text :style="{ color: item.liked ? '#f3b84d' : 'rgba(255,255,255,0.9)' }">{{ formatCount(item.like_count) }}</text>
               </view>
               <view class="action" @click.stop="toggleCommentPanel">
-                <u-icon name="chat" color="#ffffff" size="46" />
+                <u-icon name="chat" color="#ffffff" size="56" />
                 <text>{{ commentCount > 0 ? formatCount(commentCount) : t('comment') }}</text>
               </view>
               <view class="action" @click.stop="share">
-                <u-icon name="share-fill" color="#ffffff" size="46" />
+                <u-icon name="share-fill" color="#ffffff" size="56" />
                 <text>{{ t('share') }}</text>
               </view>
               <view class="action" @click.stop="goDetail">
-                <u-icon name="list-dot" color="#ffffff" size="46" />
+                <u-icon name="list-dot" color="#ffffff" size="56" />
                 <text>{{ t('details') }}</text>
               </view>
             </view>
@@ -272,6 +283,7 @@
 import api from '../../utils/api.js'
 import { getLocale, localeOptions, setLocale, t as translate } from '../../utils/i18n.js'
 import { notifyDataChanged, APP_DATA_EVENTS } from '../../utils/app-state.js'
+import { setupVideo, cleanupVideo } from '../../utils/hls-adapter.js'
 
 // 模块级闭包变量：用于防竞态的请求序号（不依赖 Vue data，避免下划线属性被忽略）
 let _requestCounter = 0
@@ -335,7 +347,10 @@ export default {
       windowHeight: 0,
       windowWidth: 0,
       boundaryHintTimer: null,
-      playHint: null
+      playHint: null,
+      descExpanded: false,
+      autoNext: true,
+      rewardedEpisodeId: null
     }
   },
   computed: {
@@ -372,13 +387,22 @@ export default {
   onLoad(options) {
     this.refreshLocale()
     this.bootstrap()
+    // #ifndef APP-PLUS
+    // 进度条拖动：document 捕获阶段绑定，彻底绕过 swiper 的事件拦截
+    document.addEventListener('pointerdown', this.onDocPointerDown, true)
+    document.addEventListener('pointermove', this.onDocPointerMove, true)
+    document.addEventListener('pointerup', this.onDocPointerUp, true)
+    // #endif
   },
   onShow() {
     this.refreshLocale()
     uni.$on('overlayEvent', this.handleOverlayEvent)
+    uni.$on('commentChanged', this.handleCommentChanged)
     this.updateOrientation()
     uni.onWindowResize(this.handleResize)
     this.tryResumeFeed()
+    // 回到首页时清评论缓存键，确保跨页（播放页）的评论变更能同步
+    this.commentsDramaId = null
     // 确保 overlay 层重新显示并同步最新状态（离开首页期间可能被隐藏过）
     // #ifdef APP-PLUS
     if (!this.show && !this.showCommentPanel) {
@@ -390,20 +414,44 @@ export default {
   },
   onHide() {
     uni.$off('overlayEvent', this.handleOverlayEvent)
+    uni.$off('commentChanged', this.handleCommentChanged)
     uni.offWindowResize(this.handleResize)
     this._stopFull()
   },
   onUnload() {
     this.clearVideoTimer()
     uni.$off('overlayEvent', this.handleOverlayEvent)
+    uni.$off('commentChanged', this.handleCommentChanged)
     uni.offWindowResize(this.handleResize)
     this._stopFull()
+    // #ifndef APP-PLUS
+    document.removeEventListener('pointerdown', this.onDocPointerDown, true)
+    document.removeEventListener('pointermove', this.onDocPointerMove, true)
+    document.removeEventListener('pointerup', this.onDocPointerUp, true)
+    // #endif
   },
   watch: {
     show(val) {
       // APP 端：弹窗打开时隐藏原生 overlay（否则原生层盖住弹窗），关闭时恢复
       if (val) {
         this.hideOverlay()
+        // 弹窗打开时暂停视频（不销毁 video 元素，避免重新加载）
+        const item = this.currentItem
+        if (item && item.playback_url) {
+          try {
+            const ctx = uni.createVideoContext('myVideo' + item.episodeId, this)
+            if (ctx && ctx.pause) ctx.pause()
+          } catch (_) {}
+          // #ifdef H5
+          if (this._hlsHandle) {
+            try {
+              const videoEl = document.getElementById('myVideo' + item.episodeId)
+              const ve = videoEl && videoEl.tagName === 'VIDEO' ? videoEl : videoEl && videoEl.querySelector ? videoEl.querySelector('video') : null
+              if (ve) ve.pause()
+            } catch (_) {}
+          }
+          // #endif
+        }
       } else {
         // 选集弹窗关闭时：如果评论区也没展开，才恢复 overlay
         if (!this.showCommentPanel) this.showOverlay()
@@ -470,6 +518,12 @@ export default {
           this.loadError = '加载超时，请重试'
         }
       }, 8000)
+      // 异步加载用户设置（autoNext 开关）
+      if (uni.getStorageSync('token')) {
+        api.getSettings().then(settings => {
+          if (settings) this.autoNext = settings.autoNext !== false && settings.auto_next !== false
+        }).catch(() => {})
+      }
       try {
         await this.loadFeed(1, true)
       } catch (err) {
@@ -512,15 +566,19 @@ export default {
       })
     },
     showOverlay() {
+      // #ifdef APP-PLUS
       const ov = uni.getSubNVueById('indexOverlay')
       if (ov) {
         ov.show()
         this.sendOverlayUpdate()
       }
+      // #endif
     },
     hideOverlay() {
+      // #ifdef APP-PLUS
       const ov = uni.getSubNVueById('indexOverlay')
       if (ov) ov.hide()
+      // #endif
     },
     handleOverlayEvent(e) {
       if (!e || !e.type) return
@@ -723,6 +781,7 @@ export default {
       const prevIndex = this.current
       if (prevIndex === newIndex) return
       if (newIndex < 0 || newIndex >= this.videoList.length) return
+      this.descExpanded = false
 
       // 触底加载
       if (this.feedHasMore && !this.feedLoading && newIndex >= this.videoList.length - 2) {
@@ -735,17 +794,33 @@ export default {
         this.setHistor(prevItem.dramaId, prevItem.episodeId)
       }
 
-      // 停旧
+      // 停旧：停止当前播放实例，但保留预加载实例（可能正好是即将播放的下一个）
+      // #ifdef H5
+      if (this._hlsHandle) {
+        try { this._hlsHandle.destroy() } catch (_) {}
+        this._hlsHandle = null
+      }
+      // 如果滑到的是预加载的视频，不销毁预加载实例，由 playCurrent 接管
+      if (newIndex !== prevIndex + 1 && this._prefetchHandle) {
+        try { this._prefetchHandle.destroy() } catch (_) {}
+        this._prefetchHandle = null
+      }
+      // #endif
+      // #ifndef H5
       this.stopPlayback()
+      // #endif
       // 注意：不要在这里 this.current = newIndex，swiper 内部已经是 newIndex 了
       // :current 只用于初始加载时的定位，后续不回写避免循环触发
       this.$set(this, 'current', newIndex)
 
       const item = this.videoList[newIndex]
       if (!item) return
+      // H5 端：立即设置 playingEpisodeId，避免 Vue 重渲染时预加载的 video 元素被销毁
+      // #ifdef H5
+      this.playingEpisodeId = item.episodeId
+      // #endif
       this.num = item.episode_no || 1
       this.progressSeconds = 0
-      this.videoLoadError = ''
       this.commentCount = 0
       this.comments = []
       this.commentsTotal = 0
@@ -799,8 +874,28 @@ export default {
       uni.showToast({ title: msg, icon: 'none', duration: 1200 })
       this.boundaryHintTimer = setTimeout(() => { this.boundaryHintTimer = null }, 1500)
     },
+    // 当前正在播放的视频：渲染 video 元素并播放
     shouldShowVideo(item, index) {
       return this.current === index && item && item.playback_url && this.playingEpisodeId === item.episodeId && !this.videoLoadError
+    },
+    // 预加载下一个视频：当前视频的下一集，有 playback_url，且尚未播放过
+    shouldPreloadVideo(item, index) {
+      return index === this.current + 1 && item && item.playback_url && !this.videoLoadError
+    },
+    // 统一判断是否渲染 video 元素（当前播放 + 预加载下一个）
+    shouldRenderVideo(item, index) {
+      return this.shouldShowVideo(item, index) || this.shouldPreloadVideo(item, index)
+    },
+    // 评论区打开时当前视频不销毁，只是隐藏（暂停）
+    isVideoHidden(item, index) {
+      return this.show && index === this.current
+    },
+    isVideoPreload(item, index) {
+      return this.shouldPreloadVideo(item, index)
+    },
+    // 只有当前播放的视频才自动播放，预加载的不播
+    shouldAutoplay(item, index) {
+      return this.shouldShowVideo(item, index)
     },
     shouldShowVideoError(index) {
       return this.current === index && !!this.videoLoadError
@@ -821,13 +916,88 @@ export default {
       this.playRetryCount = 0
       this.resetVideoState(item)
       this.$nextTick(() => {
+        // #ifdef H5
+        // H5 端：等 video DOM 元素出现后用 hls-adapter 接管
+        this._attachH5Video(item, 10)
+        // #endif
+        // #ifndef H5
         uni.createVideoContext('myVideo' + item.episodeId, this).play()
+        // #endif
         this.setHistor(item.dramaId, item.episodeId)
         this.sendOverlayUpdate()
+        // 预加载下一个视频
+        this._prefetchNextVideo()
       })
+    },
+    // H5 端：找到 video DOM 并 setupVideo（重试直到元素出现）
+    // 如果视频已经被预加载（已有 __hls），直接 play 而不重新创建
+    _attachH5Video(item, retries) {
+      const videoId = 'myVideo' + item.episodeId
+      // uni-app video 渲染后 DOM 是 <view id="myVideo123"><video></video></view>
+      let videoEl = document.getElementById(videoId)
+      if (videoEl && videoEl.tagName !== 'VIDEO') {
+        videoEl = videoEl.querySelector('video')
+      }
+      if (!videoEl && retries > 0) {
+        setTimeout(() => this._attachH5Video(item, retries - 1), 150)
+        return
+      }
+      if (!videoEl) return
+
+      // 如果预加载已经创建了 HLS 实例，直接 play
+      if (videoEl.__hls) {
+        videoEl.muted = true
+        try { videoEl.play().catch(() => {}) } catch (_) {}
+        this._hlsHandle = { destroy: () => { try { videoEl.__hls.destroy() } catch (_) {} ; videoEl.__hls = null }, hls: videoEl.__hls }
+        return
+      }
+
+      // 清理旧实例
+      if (this._hlsHandle) {
+        try { this._hlsHandle.destroy() } catch (_) {}
+        this._hlsHandle = null
+      }
+
+      // 用 hls-adapter 接管
+      this._hlsHandle = setupVideo(videoEl, item.playback_url, true)
+    },
+    // H5 端：预加载下一个视频的 manifest+首片，切换时直接播放
+    _prefetchNextVideo(retries) {
+      // #ifdef H5
+      if (retries == null) retries = 10
+      const nextIndex = this.current + 1
+      const nextItem = this.videoList[nextIndex]
+      if (!nextItem || !nextItem.playback_url) return
+
+      const videoId = 'myVideo' + nextItem.episodeId
+      let videoEl = document.getElementById(videoId)
+      if (videoEl && videoEl.tagName !== 'VIDEO') {
+        videoEl = videoEl.querySelector('video')
+      }
+      if (!videoEl && retries > 0) {
+        setTimeout(() => this._prefetchNextVideo(retries - 1), 150)
+        return
+      }
+      if (!videoEl) return
+      if (videoEl.__hls) return // 已预加载
+
+      // 静默预加载：autoplay=false，只加载 manifest 和首片
+      const handle = setupVideo(videoEl, nextItem.playback_url, false)
+      this._prefetchHandle = handle
+      // #endif
     },
     stopPlayback() {
       this.clearVideoTimer()
+      // #ifdef H5
+      if (this._hlsHandle) {
+        try { this._hlsHandle.destroy() } catch (_) {}
+        this._hlsHandle = null
+      }
+      if (this._prefetchHandle) {
+        try { this._prefetchHandle.destroy() } catch (_) {}
+        this._prefetchHandle = null
+      }
+      // #endif
       this.playingEpisodeId = null
       this.videoLoadError = ''
       this.feedPaused = false
@@ -855,9 +1025,58 @@ export default {
       }
       this.sendOverlayUpdate()
     },
+    // document 捕获阶段的进度条拖动：彻底绕过 swiper 的事件拦截
+    onDocPointerDown(e) {
+      const bar = e.target && e.target.closest && e.target.closest('.video-progress-bar-h5')
+      if (!bar) return
+      e.stopImmediatePropagation()
+      e.preventDefault()
+      this.draggingProgress = true
+      this._progressTrackEl = bar.querySelector('.video-progress-track')
+      this.seekByClientX(e.clientX)
+    },
+    onDocPointerMove(e) {
+      if (!this.draggingProgress) return
+      e.stopImmediatePropagation()
+      e.preventDefault()
+      this.seekByClientX(e.clientX)
+    },
+    onDocPointerUp(e) {
+      if (!this.draggingProgress) return
+      this.draggingProgress = false
+    },
+    seekByClientX(clientX) {
+      const track = this._progressTrackEl
+      if (!track) return
+      const rect = track.getBoundingClientRect()
+      if (!rect || !rect.width) return
+      const percent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
+      this.progressPercent = percent
+      const dur = this.videoDuration
+      if (dur > 0) {
+        const seconds = Math.floor(percent / 100 * dur)
+        this.progressSeconds = seconds
+        const item = this.currentItem
+        if (item) {
+          const ctx = uni.createVideoContext('myVideo' + item.episodeId, this)
+          if (ctx && ctx.seek) ctx.seek(seconds)
+        }
+      }
+    },
     onProgressTouchStart(e) {
       this.draggingProgress = true
       this.seekByTouch(e)
+      // 鼠标拖动：把 mousemove/mouseup 挂到 window，防止鼠标移出进度条后事件丢失
+      // #ifndef APP-PLUS
+      if (e.type && e.type.indexOf('mouse') === 0) {
+        if (!this._winMouseMove) {
+          this._winMouseMove = (ev) => { if (this.draggingProgress) this.seekByTouch(ev) }
+          this._winMouseUp = () => { this.draggingProgress = false; window.removeEventListener('mousemove', this._winMouseMove); window.removeEventListener('mouseup', this._winMouseUp) }
+        }
+        window.addEventListener('mousemove', this._winMouseMove)
+        window.addEventListener('mouseup', this._winMouseUp)
+      }
+      // #endif
     },
     onProgressTouchMove(e) {
       if (this.draggingProgress) this.seekByTouch(e)
@@ -866,14 +1085,21 @@ export default {
       this.draggingProgress = false
     },
     seekByTouch(e) {
-      const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0])
-      if (!touch) return
-      const sys = uni.getSystemInfoSync()
-      // 轨道左右各缩进 130rpx
-      const pad = 130 * sys.windowWidth / 750
-      const usable = sys.windowWidth - pad * 2
-      const raw = touch.clientX - pad
-      const percent = Math.max(0, Math.min(100, (raw / usable) * 100))
+      // 兼容 touch 事件和 mouse 事件（桌面浏览器测试用鼠标拖动）
+      const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e
+      const clientX = touch && touch.clientX
+      if (clientX == null) return
+      // 优先用进度条轨道的真实位置；window 事件没有 currentTarget 时用缓存
+      let target = e.currentTarget || this._progressTrackEl
+      // currentTarget 可能是整个进度条容器，需要找到子元素轨道
+      if (target && target.querySelector) {
+        const track = target.querySelector('.video-progress-track')
+        if (track) target = track
+      }
+      const rect = target && target.getBoundingClientRect && target.getBoundingClientRect()
+      if (!rect || !rect.width) return
+      this._progressTrackEl = target
+      const percent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
       this.progressPercent = percent
       const dur = this.videoDuration
       if (dur > 0) {
@@ -981,6 +1207,27 @@ export default {
       this.playCurrent(item)
     },
     ended() {
+      const item = this.videoList[this.current]
+      if (!item) return
+      // 保存历史记录
+      this.setHistor(item.dramaId, item.episodeId)
+      // 积分奖励（每集一次）
+      if (item.episodeId && this.rewardedEpisodeId !== item.episodeId) {
+        this.rewardedEpisodeId = item.episodeId
+        api.rewardEpisode(item.episodeId).then(() => {
+          notifyDataChanged(APP_DATA_EVENTS.points)
+        }).catch(() => {})
+      }
+      // autoNext 开关关闭则不自动连播
+      if (!this.autoNext) return
+      // 如果当前是某剧的第一集，跳转到播放页从第二集开始播放
+      if (Number(item.episode_no) === 1 && item.dramaId) {
+        uni.navigateTo({
+          url: '/pages/player/player?dramaId=' + item.dramaId + '&startEpisode=2'
+        })
+        return
+      }
+      // 否则滑到 Feed 中的下一个视频
       if (this.current < this.videoList.length - 1) {
         this.current += 1
       }
@@ -1149,6 +1396,18 @@ export default {
         this.commentsLoading = false
       }
     },
+    // 跨页评论变更：播放页发/删评论后，首页同步刷新
+    handleCommentChanged(payload) {
+      if (!payload) return
+      const item = this.currentItem
+      if (!item) return
+      if (String(payload.dramaId) !== String(item.dramaId)) return
+      if (payload.episodeId && item.episodeId && String(payload.episodeId) !== String(item.episodeId)) return
+      this.commentsDramaId = null
+      this.commentsTotal = 0
+      this.commentCount = 0
+      if (this.showCommentPanel) this.loadComments()
+    },
     toggleCommentPanel() {
       // 点击右侧评论按钮 → 展开/收起评论区
       if (this.showCommentPanel) {
@@ -1207,6 +1466,8 @@ export default {
           this.comments.unshift({ ...comment, children: [], replies_total: 0 })
           this.commentCount += 1
         }
+        // 通知其他页面（播放页）评论已变更，需重新拉取
+        uni.$emit('commentChanged', { dramaId: item.dramaId, episodeId: item.episodeId })
         this.commentText = ''
         this.toast(this.t('commentAdded'))
       } catch (err) {
@@ -1265,6 +1526,8 @@ export default {
               this.commentsTotal = Math.max(0, this.commentsTotal - 1)
               this.commentCount = this.commentsTotal
             }
+            const cur = this.currentItem
+            if (cur) uni.$emit('commentChanged', { dramaId: cur.dramaId, episodeId: cur.episodeId })
             this.toast(this.t('commentDeleted'))
           } catch (err) {
             this.toast(err.message)
@@ -1416,7 +1679,7 @@ page,
 }
 
 .topbar {
-  position: fixed;
+  position: relative;
   top: 0;
   left: 0;
   right: 0;
@@ -1424,24 +1687,28 @@ page,
   pointer-events: auto;
   display: flex;
   align-items: center;
-  height: 88rpx;
-  padding: 10rpx 16rpx 0;
-  background: linear-gradient(to bottom, rgba(6, 7, 10, 0.5), rgba(6, 7, 10, 0));
-  backdrop-filter: blur(18rpx);
+  height: calc(88rpx + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 20rpx 0;
+  box-sizing: border-box;
+  background: linear-gradient(to bottom, rgba(6, 7, 10, 0.55), rgba(6, 7, 10, 0));
+}
+
+/* 左右等宽占位：把 tabs 精确挤到视觉正中，右侧语言钮放最右 */
+.topbar-side {
+  width: 56rpx;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .feed-tabs {
-  position: fixed;
-  top: 88rpx;
-  left: 0;
-  right: 0;
+  flex: 1;
+  position: relative;
   z-index: 19;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 48rpx;
-  padding: 10rpx 0 14rpx;
-  background: linear-gradient(to bottom, rgba(6, 7, 10, 0.4), rgba(6, 7, 10, 0));
   pointer-events: auto;
 }
 
@@ -1449,7 +1716,7 @@ page,
   position: relative;
   padding: 12rpx 8rpx 14rpx;
   margin: 0 16rpx;
-  font-size: 30rpx;
+  font-size: 34rpx;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.55);
   transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1860,9 +2127,8 @@ page,
 }
 
 .language {
-  width: 40rpx;
+  width: 44rpx;
   height: 38rpx;
-  margin-right: 8rpx;
   line-height: 38rpx;
   text-align: center;
   font-size: 16rpx;
@@ -1911,6 +2177,8 @@ page,
 /* H5 端：视频组件背景透明，contain 模式的 letterbox 露出下方模糊封面 */
 .video-area .swipers-items-video {
   background: transparent !important;
+  object-fit: contain;
+  object-position: center 42%;
 }
 .video-area uni-video,
 .video-area uni-video .uni-video-container,
@@ -1920,15 +2188,21 @@ page,
 }
 /* #endif */
 
+/* 预加载或评论区打开时隐藏视频但不销毁 */
+.video-hidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .video-tap-area {
   /* APP 端原生 video 内的 cover-view 必须绝对定位才能铺满，否则点击层大小为 0 */
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
+  bottom: 220rpx;
+  width: auto;
+  height: auto;
 }
 
 /* 底部渐变遮罩：衬托作者/标题/简介，不拦截点击 */
@@ -1955,45 +2229,67 @@ page,
   height: 60rpx;
   pointer-events: auto;
 }
-.video-progress-time {
-  position: absolute;
-  top: 16rpx;
-  left: 24rpx;
+/* H5/小程序端进度条：位于合集选集入口下方，时间 | 轨道 | 时间 */
+.video-progress-bar-h5 {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 56rpx;
+  margin-top: 12rpx;
+  pointer-events: auto;
+  z-index: 20;
+}
+.video-progress-bar-h5 .video-progress-time {
+  flex-shrink: 0;
+  width: 84rpx;
   font-size: 22rpx;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
 }
-.video-progress-time-right {
-  left: auto;
-  right: 24rpx;
+.video-progress-bar-h5 .video-progress-time-right {
+  text-align: right;
 }
-.video-progress-track {
+.video-progress-bar-h5 .video-progress-track {
+  position: relative;
+  flex: 1;
+  height: 56rpx;
+  margin: 0 12rpx;
+  background-color: transparent;
+  border-radius: 0;
+  touch-action: none;
+}
+.video-progress-bar-h5 .video-progress-track::after {
+  content: "";
   position: absolute;
-  left: 130rpx;
-  right: 130rpx;
-  top: 28rpx;
+  left: 0;
+  right: 0;
+  top: 50%;
+  margin-top: -2rpx;
   height: 4rpx;
   background-color: rgba(255, 255, 255, 0.3);
   border-radius: 2rpx;
 }
-.video-progress-fill {
+.video-progress-bar-h5 .video-progress-fill {
   position: absolute;
-  left: 130rpx;
-  top: 26rpx;
+  left: 0;
+  top: 50%;
+  margin-top: -4rpx;
   height: 8rpx;
   background-color: #ffffff;
   border-radius: 4rpx;
+  z-index: 1;
 }
-.video-progress-thumb {
+.video-progress-bar-h5 .video-progress-thumb {
   position: absolute;
-  top: 18rpx;
+  top: 50%;
   width: 24rpx;
   height: 24rpx;
-  margin-left: -12rpx;
+  margin: -12rpx 0 0 -12rpx;
   border-radius: 12rpx;
   background-color: #ffffff;
   box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.5);
+  z-index: 2;
 }
 
 .video-tap-area {
@@ -2002,9 +2298,9 @@ page,
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
+  bottom: 220rpx;
+  width: auto;
+  height: auto;
 }
 
 /* 播放/暂停反馈提示（cover-view 不支持 flex/transform/animation） */
@@ -2154,8 +2450,9 @@ page,
   position: absolute;
   left: 24rpx;
   right: 140rpx;
-  bottom: 20rpx;
+  bottom: 60rpx;
   z-index: 10;
+  touch-action: none;
 }
 
 .swipers-items-info-title {
@@ -2171,6 +2468,7 @@ page,
 }
 
 .swipers-items-info-content {
+  flex: 1;
   margin-top: 6rpx;
   font-size: 22rpx;
   line-height: 1.4;
@@ -2180,6 +2478,23 @@ page,
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+.swipers-items-info-content.expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+}
+.desc-row {
+  display: flex;
+  align-items: flex-end;
+}
+.desc-more-btn {
+  flex-shrink: 0;
+  margin-left: 8rpx;
+  font-size: 22rpx;
+  color: #f7c66a;
+  text-decoration: underline;
+  white-space: nowrap;
 }
 
 .swipers-items-info-num {
@@ -2205,7 +2520,7 @@ page,
 .swipers-items-right {
   position: absolute;
   right: 16rpx;
-  bottom: 24rpx;
+  top: 42%;
   z-index: 10;
 }
 
@@ -2230,11 +2545,16 @@ page,
 }
 
 .swipers-items-right .action {
-  width: 96rpx;
-  margin-bottom: 22rpx;
+  width: 104rpx;
+  margin-bottom: 26rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.swipers-items-right .action text {
+  font-size: 26rpx;
+  margin-top: 8rpx;
 }
 
 .swipers-items-right .action u-icon {

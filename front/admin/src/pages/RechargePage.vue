@@ -10,8 +10,8 @@
         <div class="balance-value">{{ formatNumber(store.points.value, locale) }} <span class="balance-unit">{{ t('common.points') }}</span></div>
       </div>
       <div class="balance-actions">
-        <button class="balance-action-btn" @click="showRecords = !showRecords">
-          {{ showRecords ? t('recharge.hideRecords') : t('recharge.viewRecords') }}
+        <button class="balance-action-btn" @click="router.push({ name: 'profile', query: { panel: 'orders' } })">
+          {{ t('recharge.viewRecords') }}
         </button>
       </div>
       <div class="balance-glow"></div>
@@ -113,28 +113,6 @@
       @verified="onIapVerified"
     />
 
-    <!-- 充值记录 -->
-    <section v-if="showRecords" class="recharge-records">
-      <h2 class="section-title">{{ t('recharge.myRecords') }}</h2>
-      <div v-if="loadingRecords" class="stream-loading">{{ t('common.loading') }}</div>
-      <div v-else-if="records.length" class="recharge-records-list">
-        <article v-for="record in records" :key="record.id" class="recharge-record-card">
-          <div class="record-icon">💰</div>
-          <div class="record-info">
-            <div class="record-product">
-              {{ field(record, 'product_name') || field(record, 'productName') || t('recharge.recharge') }}
-            </div>
-            <div class="record-meta">
-              <span class="record-points">+{{ formatNumber(field(record, 'points') || 0, locale) }} {{ t('common.points') }}</span>
-              <span class="record-time">{{ formatDate(record.created_at, locale, true) }}</span>
-            </div>
-          </div>
-          <div class="record-amount">{{ formatMoney(field(record, 'amount_cents'), field(record, 'currency') || 'USD', locale) }}</div>
-        </article>
-      </div>
-      <div v-else class="stream-empty">{{ t('recharge.noRecords') }}</div>
-    </section>
-
     <!-- 积分说明 -->
     <section class="recharge-notice">
       <h3>{{ t('recharge.noticeTitle') }}</h3>
@@ -173,13 +151,10 @@ const { t, locale } = useStreamI18n()
 const { pointsExpireAt } = store
 
 const plans = ref([])
-const records = ref([])
 const loading = ref(false)
-const loadingRecords = ref(false)
 const submitting = ref(false)
 const selectedPlan = ref(null)
 const selectedMethod = ref('STRIPE')
-const showRecords = ref(false)
 const levelPreview = ref(null)
 const showLevelPreview = ref(false)
 const membershipStatus = ref(null)
@@ -193,8 +168,6 @@ const pollingIntervalMs = 4000
 let pollingAttempts = 0
 
 // Web 环境仅保留可在浏览器完成的支付渠道。
-// Apple 应用内购买 (APPLE_IAP) / Google Play 应用内购买 (GOOGLE_PLAY) 需要原生 App 拉起系统支付，
-// 无法在纯网页端使用，因此在 front/admin 用户端不展示。
 const payMethods = computed(() => [
   { key: 'STRIPE', icon: '💳', label: t('recharge.creditCard') },
   { key: 'PAYPAL', icon: '🅿️', label: t('recharge.paypal') }
@@ -215,9 +188,10 @@ async function loadPlans() {
   try {
     const data = await api.pointProducts()
     const all = Array.isArray(data) ? data : data?.records || data?.list || []
-    plans.value = all.filter(
-      p => field(p, 'product_category') === 'RECHARGE' || field(p, 'productCategory') === 'RECHARGE'
-    )
+    plans.value = all.filter(p => {
+      const category = field(p, 'product_category', 'productCategory')
+      return !category || category === 'RECHARGE'
+    })
   } catch (err) {
     console.warn('加载套餐失败:', err)
   } finally {
@@ -225,25 +199,10 @@ async function loadPlans() {
   }
 }
 
-async function loadRecords() {
-  loadingRecords.value = true
-  try {
-    const data = await api.userOrders({ page_size: 20 })
-    records.value = (Array.isArray(data) ? data : data?.records || data?.list || []).filter(
-      r => field(r, 'order_type') === 'RECHARGE' || field(r, 'orderType') === 'RECHARGE'
-    )
-  } catch (err) {
-    console.warn('加载充值记录失败:', err)
-  } finally {
-    loadingRecords.value = false
-  }
-}
-
 async function submitRecharge() {
   if (!selectedPlan.value || submitting.value) return
   try {
     submitting.value = true
-    // Step 1: 创建订单 (使用选中的支付渠道)
     const order = await api.userCreateOrder({
       productId: selectedPlan.value.id,
       payChannel: selectedMethod.value
@@ -254,24 +213,20 @@ async function submitRecharge() {
 
     const orderNo = order.order_no
 
-    // 等级预告
     if (order.level_preview) {
       levelPreview.value = order.level_preview
       showLevelPreview.value = true
     }
 
-    // Step 2: 根据支付渠道跳转到对应支付页面
     if (selectedMethod.value === 'STRIPE') {
       const checkout = await api.userStripeCheckout(orderNo)
       if (checkout?.session_url) {
-        // 跳转到 Stripe Checkout 页面
         window.location.href = checkout.session_url
         return
       }
     } else if (selectedMethod.value === 'PAYPAL') {
       const checkout = await api.userPayPalCheckout(orderNo)
       if (checkout?.approve_url) {
-        // 跳转到 PayPal 页面
         window.location.href = checkout.approve_url
         return
       }
@@ -287,7 +242,6 @@ async function submitRecharge() {
   }
 }
 
-// 开始轮询指定订单号的状态:直到 PAID/REFUNDED 或超时
 function startPollingOrderStatus(orderNo) {
   if (!orderNo) return
   pollingOrderNo.value = orderNo
@@ -296,7 +250,7 @@ function startPollingOrderStatus(orderNo) {
   pollingTimer.value = setInterval(async () => {
     pollingAttempts++
     try {
-      const list = await api.userOrders({ page_size: 50 })
+      const list = await api.orders({ limit: 50 })
       const orders = Array.isArray(list) ? list : list?.records || list?.list || []
       const target = orders.find(o => (o.order_no || o.orderNo) === orderNo)
       if (target) {
@@ -306,9 +260,6 @@ function startPollingOrderStatus(orderNo) {
           ElMessage.success(t('recharge.rechargeSuccess'))
           selectedPlan.value = null
           store.loadProfile?.()
-          if (showRecords.value) {
-            await loadRecords()
-          }
         } else if (status === 'REFUNDED' || status === 'CANCELLED') {
           stopPollingOrderStatus()
           if (status === 'REFUNDED') ElMessage.warning(t('recharge.paymentRefunded'))
@@ -334,8 +285,6 @@ function stopPollingOrderStatus() {
   }
 }
 
-// PayPal 支付完成后的回调处理 (用户从 PayPal 页面返回后调用)
-// 先尝试后端 capture 兜底 (仅 10 分钟窗口有效),任何失败都回退到订单状态轮询
 async function handlePayPalReturn(orderNo, paypalOrderId) {
   if (!orderNo) return
   try {
@@ -346,18 +295,13 @@ async function handlePayPalReturn(orderNo, paypalOrderId) {
         ElMessage.success(t('recharge.rechargeSuccess'))
         selectedPlan.value = null
         store.loadProfile?.()
-        if (showRecords.value) {
-          await loadRecords()
-        }
         return
       }
     }
   } catch (_err) {
-    // capture 失败 (可能超过时间窗等),直接进入轮询
   } finally {
     submitting.value = false
   }
-  // capture 兜底不成功,启动订单状态轮询 (以 Webhook 为权威确认点)
   ElMessage.info(t('recharge.confirmingPayment'))
   startPollingOrderStatus(orderNo)
 }
@@ -366,15 +310,9 @@ async function onIapVerified() {
   ElMessage.success(t('recharge.rechargeSuccess'))
   selectedPlan.value = null
   store.loadProfile?.()
-  if (showRecords.value) {
-    await loadRecords()
-  }
 }
 
 onMounted(async () => {
-  // 检查是否从 Stripe / PayPal 支付页返回
-  // 安全原则:永远不信任 URL 上的 status 参数,只取 orderNo 等标识,
-  // 实际支付结果以后端订单状态 (Webhook 落单) 为准。
   const params = new URLSearchParams(window.location.search)
   const paypalOrderId = params.get('token') || params.get('paypalOrderId')
   const orderNo = params.get('orderNo')
@@ -384,8 +322,6 @@ onMounted(async () => {
     ElMessage.warning(t('recharge.paymentCancelled'))
     window.history.replaceState({}, '', window.location.pathname)
   } else if (orderNo) {
-    // 有订单号:进入轮询确认流程 (不依赖 status=success),
-    // PayPal 还可带 paypalOrderId 尝试 capture 兜底
     if (paypalOrderId) {
       await handlePayPalReturn(orderNo, paypalOrderId)
     } else {

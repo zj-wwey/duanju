@@ -98,7 +98,7 @@ public class AdminPointProductController {
                 .set(PointProduct::getTagText, request.tagText())
                 .set(PointProduct::getCoverUrl, request.coverUrl())
                 .set(PointProduct::getSortOrder, request.sortOrder())
-                .set(PointProduct::getStatus, request.status())
+                .set(PointProduct::getStatus, request.status() != null ? request.status() : product.getStatus())
                 .set(PointProduct::getProductCategory, request.productCategory())
                 .set(PointProduct::getMembershipLevel, request.membershipLevel())
                 .set(PointProduct::getDailyLimit, request.dailyLimit())

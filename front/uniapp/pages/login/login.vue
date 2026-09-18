@@ -21,7 +21,17 @@
         <view class="brand-hero enter-anim enter-1">
           <view class="hero-logo">
             <view class="hero-logo-inner">
-              <text class="hero-logo-text">SD</text>
+              <!-- 金色五角星 Logo -->
+              <svg class="hero-logo-star" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="starGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#D4AF68"/>
+                    <stop offset="100%" stop-color="#C86D26"/>
+                  </linearGradient>
+                </defs>
+                <rect width="64" height="64" rx="14" fill="#1E1C19" stroke="url(#starGrad)" stroke-width="2"/>
+                <path d="M32 14 L35.5 26 L48 26 L38 33 L42 45 L32 37 L22 45 L26 33 L16 26 L28.5 26 Z" fill="url(#starGrad)"/>
+              </svg>
               <!-- Logo 表面扫光 -->
               <view class="hero-shine" />
             </view>
@@ -455,25 +465,15 @@ page,
   height: 128rpx;
   border-radius: 36rpx;
   overflow: hidden;
-  background:
-    linear-gradient(160deg, #fff4cf 0%, #ffd989 28%, #f4b846 60%, #d99426 85%, #b97619 100%);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow:
-    0 18rpx 44rpx rgba(247, 198, 106, 0.5),
-    0 0 0 2rpx rgba(255, 243, 207, 0.35),
-    inset 0 3rpx 6rpx rgba(255, 255, 255, 0.7),
-    inset 0 -6rpx 12rpx rgba(160, 100, 15, 0.3);
 }
-.hero-logo-text {
-  position: relative;
-  z-index: 2;
-  color: #1a1206;
-  font-size: 52rpx;
-  font-weight: 900;
-  letter-spacing: 2rpx;
-  text-shadow: 0 1rpx 0 rgba(255,255,255,0.35);
+.hero-logo-star {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 /* Logo 表面扫光（像金属/玻璃反光斜扫） */
 .hero-shine {
@@ -1024,8 +1024,9 @@ page,
     height: 100rpx;
     border-radius: 28rpx;
   }
-  .hero-logo-text {
-    font-size: 42rpx;
+  .hero-logo-star {
+    width: 100%;
+    height: 100%;
   }
   .hero-title-text {
     font-size: 46rpx;

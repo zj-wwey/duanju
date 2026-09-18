@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="page">
     <view class="page-head">
       <view class="page-title">{{ t('orders') }}</view>
@@ -27,7 +27,11 @@
         </view>
         <view class="order-footer">
           <text class="order-time">{{ formatDate(item.created_at || item.createdAt) }}</text>
-          <text v-if="canDelete(item.status)" class="order-delete" @click="onDelete(item)">删除</text>
+          <view class="order-actions">
+            <text v-if="canPay(item.status)" class="order-pay" @click="onPay(item)">去支付</text>
+            <text v-if="canCancel(item.status)" class="order-cancel" @click="onCancel(item)">取消</text>
+            <text v-if="canDelete(item.status)" class="order-delete" @click="onDelete(item)">删除</text>
+          </view>
         </view>
       </view>
     </view>
@@ -93,8 +97,52 @@ export default {
     formatDate(value) {
       return formatDateUtil(value, this.locale, true)
     },
+    canPay(status) {
+      return ['PENDING'].includes(status)
+    },
+    canCancel(status) {
+      return ['PENDING'].includes(status)
+    },
     canDelete(status) {
-      return ['CANCELLED', 'CLOSED', 'REFUNDED'].includes(status)
+      return ['PAID', 'CANCELLED', 'CLOSED', 'REFUNDED'].includes(status)
+    },
+    async onPay(item) {
+      const orderNo = item.order_no || item.orderNo || item.id
+      try {
+        uni.showLoading({ title: '正在准备支付...' })
+        // 复用后端 stripe-checkout 接口创建/获取 session_url
+        const data = await api.stripeCheckout(orderNo)
+        uni.hideLoading()
+        if (data && data.session_url) {
+          uni.navigateTo({
+            url: '/pages/webview/webview?url=' + encodeURIComponent(data.session_url) + '&orderNo=' + encodeURIComponent(orderNo)
+          })
+        } else {
+          uni.showToast({ title: '支付链接获取失败', icon: 'none' })
+        }
+      } catch (err) {
+        uni.hideLoading()
+        uni.showToast({ title: err.message || '支付失败', icon: 'none' })
+      }
+    },
+    onCancel(item) {
+      const orderNo = item.order_no || item.orderNo || item.id
+      uni.showModal({
+        title: '确认取消',
+        content: '取消后订单将失效,此操作不可恢复',
+        confirmText: '取消订单',
+        confirmColor: '#f7c66a',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            await api.cancelOrder(orderNo)
+            uni.showToast({ title: '已取消', icon: 'success' })
+            this.load()
+          } catch (err) {
+            uni.showToast({ title: err.message || '取消失败', icon: 'none' })
+          }
+        }
+      })
     },
     onDelete(item) {
       const orderNo = item.order_no || item.orderNo || item.id
@@ -277,6 +325,48 @@ page,
 .order-delete:active {
   transform: scale(0.94);
   background: rgba(255, 107, 107, 0.26);
+}
+
+.order-cancel {
+  font-size: 22rpx;
+  font-weight: 700;
+  letter-spacing: 0.5rpx;
+  color: #f7c66a;
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  background: rgba(247, 198, 106, 0.14);
+  border: 1rpx solid rgba(247, 198, 106, 0.32);
+  transition: transform 0.18s ease, background 0.18s ease;
+  margin-right: 16rpx;
+}
+
+.order-cancel:active {
+  transform: scale(0.94);
+  background: rgba(247, 198, 106, 0.26);
+}
+
+.order-actions {
+  display: flex;
+  align-items: center;
+}
+
+.order-pay {
+  font-size: 22rpx;
+  font-weight: 800;
+  letter-spacing: 0.5rpx;
+  color: #080a10;
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #f7c66a, #f0a54d);
+  border: 1rpx solid rgba(247, 198, 106, 0.6);
+  box-shadow: 0 4rpx 16rpx rgba(247, 198, 106, 0.3);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  margin-right: 16rpx;
+}
+
+.order-pay:active {
+  transform: scale(0.94);
+  box-shadow: 0 2rpx 8rpx rgba(247, 198, 106, 0.2);
 }
 
 .order-time {

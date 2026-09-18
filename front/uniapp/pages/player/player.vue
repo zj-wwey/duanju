@@ -50,20 +50,6 @@
                   :src="playHint === 'pause' ? '/static/images/playhint/pause.png' : '/static/images/playhint/play.png'"
                 />
               </cover-view>
-              <!-- #ifndef APP-PLUS -->
-              <cover-view
-                class="video-progress-bar"
-                @touchstart="onProgressTouchStart"
-                @touchmove="onProgressTouchMove"
-                @touchend="onProgressTouchEnd"
-              >
-                <cover-view class="video-progress-time">{{ formatCurrentTime }}</cover-view>
-                <cover-view class="video-progress-track"></cover-view>
-                <cover-view class="video-progress-fill" :style="{ width: progressPercent + '%' }"></cover-view>
-                <cover-view class="video-progress-thumb" :style="{ left: progressPercent + '%' }"></cover-view>
-                <cover-view class="video-progress-time video-progress-time-right">{{ formatTotalTime }}</cover-view>
-              </cover-view>
-              <!-- #endif -->
             </video>
 
             <view v-else-if="ep.id === activeId && ep.videoUrl && videoLoadError" class="locked-screen" @click="retryCurrent">
@@ -97,6 +83,61 @@
               </view>
             </view>
           </view>
+
+          <!-- #ifndef APP-PLUS -->
+          <!-- 右侧功能栏：跟首页一样，绝对定位在视频画面底部 -->
+          <view class="side-actions" :class="{ 'is-landscape': isLandscape }">
+            <view class="action" @click="toggleFavorite">
+              <u-icon :name="favorite ? 'bookmark-fill' : 'bookmark'" size="56" :color="favorite ? '#ff4d67' : '#ffffff'" />
+              <text :style="{ color: favorite ? '#ff4d67' : 'rgba(255,255,255,0.9)' }">{{ favorite ? t('favorited') : t('favorite') }}</text>
+            </view>
+            <view class="action" @click="toggleLike">
+              <u-icon :name="like ? 'thumb-up-fill' : 'thumb-up'" size="56" :color="like ? '#f3b84d' : '#ffffff'" />
+              <text :style="{ color: like ? '#f3b84d' : 'rgba(255,255,255,0.9)' }">{{ formatCount(likeCount) }}</text>
+            </view>
+            <view class="action" @click="openComments">
+              <u-icon name="chat" color="#ffffff" size="56" />
+              <text>{{ commentCount > 0 ? formatCount(commentCount) : t('comment') }}</text>
+            </view>
+            <view class="action" @click="share">
+              <u-icon name="share-fill" color="#ffffff" size="56" />
+              <text>{{ t('share') }}</text>
+            </view>
+            <view class="action" @click="goDetail">
+              <u-icon name="list-dot" color="#ffffff" size="56" />
+              <text>{{ t('details') }}</text>
+            </view>
+          </view>
+
+          <!-- 底部信息栏：标题+简介+进度条+合集选集，贴视频画面底部 -->
+          <view class="bottom-info" v-if="!isLandscape">
+            <view class="info-title">{{ drama ? drama.title : '' }}<text class="info-episode-no" v-if="activeEpisode"> · 第{{ activeEpisode.episodeNo }}集</text></view>
+            <view class="desc-row" v-if="(activeEpisode && activeEpisode.description) || (drama && drama.description)">
+              <view class="info-desc" :class="{ expanded: descExpanded }" v-if="activeEpisode && activeEpisode.description">{{ activeEpisode.description }}</view>
+              <view class="info-desc" :class="{ expanded: descExpanded }" v-else>{{ drama.description }}</view>
+              <view class="desc-more-btn" @click.stop="descExpanded = !descExpanded">{{ descExpanded ? '收起' : '更多' }}</view>
+            </view>
+            <view class="video-progress-bar"
+              @touchstart.stop.prevent="onProgressTouchStart"
+              @touchmove.stop.prevent="onProgressTouchMove"
+              @touchend.stop="onProgressTouchEnd"
+              @mousedown.stop.prevent="onProgressTouchStart"
+              @mousemove.stop.prevent="onProgressTouchMove"
+              @mouseup.stop="onProgressTouchEnd"
+              @mouseleave.stop="onProgressTouchEnd"
+            >
+              <text class="video-progress-time">{{ formatCurrentTime }}</text>
+              <view class="video-progress-track">
+                <view class="video-progress-fill" :style="{ width: progressPercent + '%' }"></view>
+                <view class="video-progress-thumb" :style="{ left: progressPercent + '%' }"></view>
+              </view>
+              <text class="video-progress-time video-progress-time-right">{{ formatTotalTime }}</text>
+            </view>
+            <view class="episode-pill" @click.stop="openSheet">
+              {{ t('collectionEntry', { num: activeEpisode ? activeEpisode.episodeNo : 1, total: episodes.length }) }}
+            </view>
+          </view>
+          <!-- #endif -->
         </swiper-item>
       </swiper>
 
@@ -106,48 +147,6 @@
 
       <!-- #ifndef APP-PLUS -->
       <view class="back-btn" @click="back">←</view>
-
-      <view class="side-actions" :class="{ 'is-landscape': isLandscape }">
-        <view class="action" @click="toggleFavorite">
-          <view class="action-icon-wrap is-favorite" :class="{ active: favorite }">
-            <u-icon :name="favorite ? 'heart-fill' : 'heart'" size="42" color="#ffffff"></u-icon>
-          </view>
-          <text class="action-label">{{ favorite ? t('favorited') : t('favorite') }}</text>
-        </view>
-        <view class="action" @click="toggleLike">
-          <view class="action-icon-wrap is-like" :class="{ active: like }">
-            <u-icon :name="like ? 'thumb-up-fill' : 'thumb-up'" size="42" color="#ffffff"></u-icon>
-          </view>
-          <text class="action-label action-num">{{ formatCount(likeCount) }}</text>
-        </view>
-        <view class="action" @click="openComments">
-          <view class="action-icon-wrap is-comment">
-            <u-icon name="chat" size="42" color="#ffffff"></u-icon>
-          </view>
-          <text class="action-label action-num">{{ commentCount > 0 ? formatCount(commentCount) : t('comment') }}</text>
-        </view>
-        <view class="action" @click="share">
-          <view class="action-icon-wrap is-share">
-            <u-icon name="share-fill" size="42" color="#ffffff"></u-icon>
-          </view>
-          <text class="action-label">{{ t('share') }}</text>
-        </view>
-        <view class="action" @click="goDetail">
-          <view class="action-icon-wrap is-detail">
-            <u-icon name="list-dot" size="42" color="#ffffff"></u-icon>
-          </view>
-          <text class="action-label">{{ t('details') }}</text>
-        </view>
-      </view>
-
-      <view class="bottom-info" v-if="!isLandscape">
-        <view class="info-author" v-if="dramaAuthor">{{ dramaAuthor }}</view>
-        <view class="info-title">{{ drama ? drama.title : '' }}</view>
-        <view class="info-desc" v-if="drama && drama.description">{{ drama.description }}</view>
-        <view class="episode-pill" @click.stop="openSheet">
-          {{ t('collectionEntry', { num: activeEpisode ? activeEpisode.episodeNo : 1, total: episodes.length }) }}
-        </view>
-      </view>
       <view class="landscape-pill" v-if="isLandscape" @click="openSheet">
         {{ t('collectionEntry', { num: activeEpisode ? activeEpisode.episodeNo : 1, total: episodes.length }) }}
       </view>
@@ -166,12 +165,25 @@
       <!-- 内嵌式评论区（跟首页一致：视频压缩 + 内嵌评论区，根评论 + 嵌套回复 + 截断展开 + 回复按钮） -->
       <view v-show="showComments" class="comments-panel" @click="blurCommentInput">
         <view class="comments-panel-header">
-          <text class="comments-panel-title">{{ t('commentTitle') }}<text v-if="commentsTotal > 0" class="comments-total-num">{{ commentsTotal }}</text></text>
-          <text class="comments-panel-close" @click.stop="closeComments">⌄</text>
+          <view class="comments-panel-title">{{ t('commentTitle') }}<text v-if="commentsTotal > 0" class="comments-total-num">{{ commentsTotal }}</text></view>
+          <view class="comments-panel-actions">
+            <text class="comments-panel-more" @click.stop="goDetail">{{ t('commentMore') }} ›</text>
+            <text class="comments-panel-close" @click.stop="closeComments">⌄</text>
+          </view>
         </view>
-        <scroll-view scroll-y class="comments-scroll" @touchmove.stop.prevent @click.stop="blurCommentInput">
+        <scroll-view
+          scroll-y
+          class="comments-scroll"
+          :scroll-with-animation="true"
+          :scroll-top="commentScrollTop"
+          @touchmove.stop.prevent="onCommentTouchMove"
+          @click.stop="blurCommentInput"
+        >
           <view v-if="commentsLoading" class="comments-empty">{{ t('loading') }}</view>
-          <view v-else-if="!comments.length" class="comments-empty">{{ t('commentEmpty') }}</view>
+          <view v-else-if="!comments.length" class="comments-empty">
+            <view class="comments-empty-icon">💬</view>
+            <view>{{ t('commentEmpty') }}</view>
+          </view>
           <view v-else>
             <!-- 根评论 + 嵌套回复（结构与首页 index.vue 完全一致） -->
             <view v-for="c in comments" :key="c.id" class="comment-item" @click.stop>
@@ -239,12 +251,14 @@ import api from '../../utils/api.js'
 import { getLocale, t as translate } from '../../utils/i18n.js'
 import { notifyDataChanged, APP_DATA_EVENTS } from '../../utils/app-state.js'
 import { resolveEpisodeSource } from '../../utils/playback.js'
+import { setupVideo, cleanupVideo } from '../../utils/hls-adapter.js'
 
 export default {
   data() {
     return {
       dramaId: null,
       episodeId: null,
+      startEpisodeNo: null,
       drama: null,
       seriesDramas: [],
       episodes: [],
@@ -266,6 +280,7 @@ export default {
       MAX_PLAY_RETRY: 1,
       feedPaused: false,
       playHint: null,
+      descExpanded: false,
       favorite: false,
       like: false,
       likeCount: 0,
@@ -276,6 +291,7 @@ export default {
       commentsLoading: false,
       commentSubmitting: false,
       commentText: '',
+      commentScrollTop: 0,
       commentsDramaId: null,
       myUserId: null,
       replyingTo: null,
@@ -320,21 +336,32 @@ export default {
   onLoad(options) {
     this.dramaId = options.dramaId || options.id
     this.episodeId = options.episodeId || options.courseDetailsId
+    this.startEpisodeNo = options.startEpisode ? Number(options.startEpisode) : null
     this.load()
+    // #ifndef APP-PLUS
+    // 进度条拖动：document 捕获阶段绑定，彻底绕过 swiper 的事件拦截
+    document.addEventListener('pointerdown', this.onDocPointerDown, true)
+    document.addEventListener('pointermove', this.onDocPointerMove, true)
+    document.addEventListener('pointerup', this.onDocPointerUp, true)
+    // #endif
   },
   onShow() {
     console.log('[PLAYER] onShow called')
     this.locale = getLocale()
     this.loadPoints()
     uni.$on('playerOverlayEvent', this.handleOverlayEvent)
+    uni.$on('commentChanged', this.handleCommentChanged)
     this.showOverlay()
     this.updateOrientation()
     uni.onWindowResize(this.handleResize)
+    // 回到播放页时清评论缓存键，确保跨页（首页）的评论变更能同步
+    this.commentsDramaId = null
   },
   onHide() {
     console.log('[PLAYER] onHide called')
     this.persistFeedResume()
     uni.$off('playerOverlayEvent', this.handleOverlayEvent)
+    uni.$off('commentChanged', this.handleCommentChanged)
     uni.offWindowResize(this.handleResize)
     this.hideOverlay()
   },
@@ -349,6 +376,11 @@ export default {
     uni.$off('playerOverlayEvent', this.handleOverlayEvent)
     uni.offWindowResize(this.handleResize)
     this.hideOverlay()
+    // #ifndef APP-PLUS
+    document.removeEventListener('pointerdown', this.onDocPointerDown, true)
+    document.removeEventListener('pointermove', this.onDocPointerMove, true)
+    document.removeEventListener('pointerup', this.onDocPointerUp, true)
+    // #endif
   },
   watch: {
     showSheet(val) {
@@ -415,7 +447,15 @@ export default {
         this.likeCount = Number(drama.like_count || drama.likeCount || 0)
         this.seriesDramas = (dramas || []).filter(item => String(item.id) !== String(this.dramaId))
         this.episodes = (drama.episodes || []).map((item, index) => this.normalizeEpisode(item, index))
-        const targetIndex = this.episodes.findIndex(item => String(item.id) === String(this.episodeId))
+        let targetIndex = -1
+        // 优先用 episodeId 定位
+        if (this.episodeId) {
+          targetIndex = this.episodes.findIndex(item => String(item.id) === String(this.episodeId))
+        }
+        // 如果没有 episodeId 但有 startEpisodeNo，按集号定位
+        if (targetIndex < 0 && this.startEpisodeNo) {
+          targetIndex = this.episodes.findIndex(item => Number(item.episodeNo) === this.startEpisodeNo)
+        }
         this.feedIndex = targetIndex >= 0 ? targetIndex : 0
         if (settings) this.autoNext = settings.autoNext !== false && settings.auto_next !== false
         await this.loadPoints()
@@ -450,6 +490,7 @@ export default {
       })
     },
     showOverlay() {
+      // #ifdef APP-PLUS
       const ov = uni.getSubNVueById('playerOverlay')
       console.log('[PLAYER] showOverlay, subNVue exists:', !!ov)
       if (ov) {
@@ -458,11 +499,14 @@ export default {
       } else {
         console.warn('[PLAYER] showOverlay FAILED: subNVue playerOverlay not found')
       }
+      // #endif
     },
     hideOverlay() {
+      // #ifdef APP-PLUS
       const ov = uni.getSubNVueById('playerOverlay')
       console.log('[PLAYER] hideOverlay, subNVue exists:', !!ov)
       if (ov) ov.hide()
+      // #endif
     },
     handleOverlayEvent(e) {
       if (!e || !e.type) return
@@ -524,6 +568,7 @@ export default {
       if (newIndex === this.feedIndex) return
       if (this.progressSeconds > 0) this.saveHistory()
       this.feedIndex = newIndex
+      this.descExpanded = false
       this.resetProgressState()
       this.$nextTick(() => {
         this.playActiveEpisode()
@@ -583,6 +628,7 @@ export default {
       this.showSheet = false
       this.dramaId = id
       this.episodeId = null
+      this.startEpisodeNo = null
       // 切剧后重置评论
       this.commentsDramaId = null
       this.comments = []
@@ -628,7 +674,33 @@ export default {
     },
     startPlayback(item) {
       this.$nextTick(() => {
+        // #ifdef H5
+        // 清理旧实例
+        if (this._hlsHandle) {
+          try { this._hlsHandle.destroy() } catch (_) {}
+          this._hlsHandle = null
+        }
+        // 等 video DOM 出现
+        const attach = (retries) => {
+          let videoEl = document.getElementById('mainVideo')
+          if (videoEl && videoEl.tagName !== 'VIDEO') {
+            videoEl = videoEl.querySelector('video')
+          }
+          if (!videoEl && retries > 0) {
+            setTimeout(() => attach(retries - 1), 150)
+            return
+          }
+          if (!videoEl) {
+            uni.createVideoContext('mainVideo', this).play()
+            return
+          }
+          this._hlsHandle = setupVideo(videoEl, item.playbackUrl || '', true)
+        }
+        attach(10)
+        // #endif
+        // #ifndef H5
         uni.createVideoContext('mainVideo', this).play()
+        // #endif
       })
     },
     // 预加载下一集播放地址，切换时无缝续播
@@ -713,9 +785,55 @@ export default {
       // 每次 timeupdate 都同步进度给 nvue overlay（约 250ms 一次）
       this.sendOverlayUpdate()
     },
+    // document 捕获阶段的进度条拖动：彻底绕过 swiper 的事件拦截
+    onDocPointerDown(e) {
+      const bar = e.target && e.target.closest && e.target.closest('.video-progress-bar')
+      if (!bar) return
+      e.stopImmediatePropagation()
+      e.preventDefault()
+      this.draggingProgress = true
+      this._progressTrackEl = bar.querySelector('.video-progress-track')
+      this.seekByClientX(e.clientX)
+    },
+    onDocPointerMove(e) {
+      if (!this.draggingProgress) return
+      e.stopImmediatePropagation()
+      e.preventDefault()
+      this.seekByClientX(e.clientX)
+    },
+    onDocPointerUp(e) {
+      if (!this.draggingProgress) return
+      this.draggingProgress = false
+    },
+    seekByClientX(clientX) {
+      const track = this._progressTrackEl
+      if (!track) return
+      const rect = track.getBoundingClientRect()
+      if (!rect || !rect.width) return
+      const percent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
+      this.progressPercent = percent
+      const dur = this.videoDuration
+      if (dur > 0) {
+        const seconds = Math.floor(percent / 100 * dur)
+        this.progressSeconds = seconds
+        const ctx = uni.createVideoContext('mainVideo', this)
+        if (ctx && ctx.seek) ctx.seek(seconds)
+      }
+    },
     onProgressTouchStart(e) {
       this.draggingProgress = true
       this.seekByTouch(e)
+      // 鼠标拖动：把 mousemove/mouseup 挂到 window，防止鼠标移出进度条后事件丢失
+      // #ifndef APP-PLUS
+      if (e.type && e.type.indexOf('mouse') === 0) {
+        if (!this._winMouseMove) {
+          this._winMouseMove = (ev) => { if (this.draggingProgress) this.seekByTouch(ev) }
+          this._winMouseUp = () => { this.draggingProgress = false; window.removeEventListener('mousemove', this._winMouseMove); window.removeEventListener('mouseup', this._winMouseUp) }
+        }
+        window.addEventListener('mousemove', this._winMouseMove)
+        window.addEventListener('mouseup', this._winMouseUp)
+      }
+      // #endif
     },
     onProgressTouchMove(e) {
       if (this.draggingProgress) this.seekByTouch(e)
@@ -724,13 +842,21 @@ export default {
       this.draggingProgress = false
     },
     seekByTouch(e) {
-      const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0])
-      if (!touch) return
-      const sys = uni.getSystemInfoSync()
-      const pad = 130 * sys.windowWidth / 750
-      const usable = sys.windowWidth - pad * 2
-      const raw = touch.clientX - pad
-      const percent = Math.max(0, Math.min(100, (raw / usable) * 100))
+      // 兼容 touch 事件和 mouse 事件（桌面浏览器测试用鼠标拖动）
+      const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e
+      const clientX = touch && touch.clientX
+      if (clientX == null) return
+      // 优先用进度条轨道的真实位置；window 事件没有 currentTarget 时用缓存
+      let target = e.currentTarget || this._progressTrackEl
+      // currentTarget 可能是整个进度条容器，需要找到子元素轨道
+      if (target && target.querySelector) {
+        const track = target.querySelector('.video-progress-track')
+        if (track) target = track
+      }
+      const rect = target && target.getBoundingClientRect && target.getBoundingClientRect()
+      if (!rect || !rect.width) return
+      this._progressTrackEl = target
+      const percent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
       this.progressPercent = percent
       const dur = this.videoDuration
       if (dur > 0) {
@@ -751,7 +877,14 @@ export default {
         }).catch(() => {})
       }
       if (!this.autoNext) return
-      if (this.feedIndex < this.episodes.length - 1) this.jumpTo(this.feedIndex + 1)
+      if (this.feedIndex < this.episodes.length - 1) {
+        // 本剧还有下一集 → 播下一集
+        this.jumpTo(this.feedIndex + 1)
+      } else if (this.seriesDramas && this.seriesDramas.length > 0) {
+        // 本剧最后一集播完 → 跳到下一部剧的第一集
+        const nextDrama = this.seriesDramas[0]
+        this.switchDrama(nextDrama.id)
+      }
     },
     saveHistory() {
       if (!uni.getStorageSync('token') || !this.dramaId || !this.activeEpisode) return
@@ -838,6 +971,18 @@ export default {
         this.commentsLoading = false
       })
     },
+    // 跨页评论变更：首页发/删评论后，播放页同步刷新
+    handleCommentChanged(payload) {
+      if (!payload || !this.drama) return
+      const myDrama = String(this.drama.id)
+      const myEp = this.activeEpisode ? String(this.activeEpisode.id) : ''
+      if (String(payload.dramaId) !== myDrama) return
+      if (payload.episodeId && myEp && String(payload.episodeId) !== myEp) return
+      this.commentsDramaId = null
+      this.commentsTotal = 0
+      this.commentCount = 0
+      if (this.showComments) this.loadComments()
+    },
     fetchMyUserId() {
       if (!uni.getStorageSync('token') || this.myUserId) return
       api.me().then(me => {
@@ -853,6 +998,9 @@ export default {
       // 评论输入框获焦 → 暂停视频
       try { uni.createVideoContext('mainVideo', this).pause() } catch (_) {}
       this.feedPaused = true
+    },
+    onCommentTouchMove() {
+      // 阻止评论区的触摸事件冒泡到 swiper，防止误切剧
     },
     onCommentBlur() {
       // 评论输入框失焦 → 恢复播放
@@ -897,6 +1045,8 @@ export default {
           this.commentsTotal += 1
           this.commentCount = this.commentsTotal
         }
+        // 通知其他页面（首页）评论已变更，需重新拉取
+        uni.$emit('commentChanged', { dramaId, episodeId })
         this.commentText = ''
         uni.showToast({ title: this.t('commentAdded'), icon: 'none' })
       } catch (err) {
@@ -956,6 +1106,7 @@ export default {
               this.commentsTotal = Math.max(0, this.commentsTotal - 1)
               this.commentCount = this.commentsTotal
             }
+            uni.$emit('commentChanged', { dramaId: this.drama.id, episodeId: this.activeEpisode ? this.activeEpisode.id : null })
             uni.showToast({ title: this.t('commentDeleted'), icon: 'none' })
           } catch (err) {
             uni.showToast({ title: err.message, icon: 'none' })
@@ -1126,9 +1277,19 @@ page,
   height: 100%;
 }
 
+.video {
+  object-fit: contain;
+  object-position: center 42%;
+}
+
 .video-tap-area {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 200rpx;
+  width: auto;
+  height: auto;
 }
 .video-play-hint {
   position: absolute;
@@ -1148,54 +1309,64 @@ page,
   margin-left: -70rpx;
 }
 
-/* cover-view 版进度条：贴底，左右时间，可拖动 */
+/* H5/小程序端进度条：位于合集选集入口下方，时间 | 轨道 | 时间 */
 .video-progress-bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(68rpx + env(safe-area-inset-bottom));
-  height: 80rpx;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 56rpx;
+  margin-top: 12rpx;
   pointer-events: auto;
 }
 .video-progress-time {
-  position: absolute;
-  top: 16rpx;
-  left: 24rpx;
+  flex-shrink: 0;
+  width: 84rpx;
   font-size: 22rpx;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
 }
 .video-progress-time-right {
-  left: auto;
-  right: 24rpx;
+  text-align: right;
 }
 .video-progress-track {
+  position: relative;
+  flex: 1;
+  height: 56rpx;
+  margin: 0 12rpx;
+  touch-action: none;
+}
+.video-progress-track::after {
+  content: "";
   position: absolute;
-  left: 130rpx;
-  right: 130rpx;
-  top: 28rpx;
+  left: 0;
+  right: 0;
+  top: 50%;
+  margin-top: -2rpx;
   height: 4rpx;
   background-color: rgba(255, 255, 255, 0.3);
   border-radius: 2rpx;
 }
 .video-progress-fill {
   position: absolute;
-  left: 130rpx;
-  top: 26rpx;
+  left: 0;
+  top: 50%;
+  margin-top: -4rpx;
   height: 8rpx;
   background-color: #ffffff;
   border-radius: 4rpx;
+  z-index: 1;
 }
 .video-progress-thumb {
   position: absolute;
-  top: 18rpx;
+  top: 50%;
   width: 24rpx;
   height: 24rpx;
-  margin-left: -12rpx;
+  margin: -12rpx 0 0 -12rpx;
   border-radius: 12rpx;
   background-color: #ffffff;
   box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.5);
+  z-index: 2;
 }
 
 .landscape-pill {
@@ -1358,10 +1529,11 @@ page,
   color: #fff;
 }
 
+/* 右侧操作栏：绝对定位到视频画面，跟首页一致 */
 .side-actions {
-  position: fixed;
+  position: absolute;
   right: 16rpx;
-  bottom: calc(220rpx + env(safe-area-inset-bottom));
+  top: 42%;
   z-index: 15;
   display: flex;
   flex-direction: column;
@@ -1383,7 +1555,7 @@ page,
   margin-bottom: 18rpx;
 }
 
-.side-actions.is-landscape .action-label {
+.side-actions.is-landscape .action text {
   font-size: 18rpx;
 }
 
@@ -1400,100 +1572,32 @@ page,
   transform: scale(0.88);
 }
 
-/* 彩色渐变图标底座：每个功能独立配色 */
-.action-icon-wrap {
-  width: 92rpx;
-  height: 92rpx;
-  border-radius: 30rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 8rpx 20rpx rgba(0, 0, 0, 0.35),
-    0 4rpx 14rpx rgba(0, 0, 0, 0.28),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.45),
-    inset 0 -2rpx 6rpx rgba(0, 0, 0, 0.18);
-  border: 1rpx solid rgba(255, 255, 255, 0.32);
-}
-
-.is-favorite {
-  background: linear-gradient(135deg, #ff8aa8, #ff2d55);
-  box-shadow:
-    0 8rpx 22rpx rgba(255, 45, 85, 0.42),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.45),
-    inset 0 -2rpx 6rpx rgba(0, 0, 0, 0.18);
-}
-
-.is-like {
-  background: linear-gradient(135deg, #ffe3a6, #f0a832);
-  box-shadow:
-    0 8rpx 22rpx rgba(240, 168, 50, 0.45),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2rpx 6rpx rgba(122, 74, 10, 0.3);
-}
-
-.is-comment {
-  background: linear-gradient(135deg, #ab90ff, #7c5cff);
-  box-shadow:
-    0 8rpx 22rpx rgba(124, 92, 255, 0.42),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.45),
-    inset 0 -2rpx 6rpx rgba(0, 0, 0, 0.18);
-}
-
-.is-share {
-  background: linear-gradient(135deg, #5fe3da, #2ea8ff);
-  box-shadow:
-    0 8rpx 22rpx rgba(46, 168, 255, 0.42),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.45),
-    inset 0 -2rpx 6rpx rgba(0, 0, 0, 0.18);
-}
-
-.is-detail {
-  background: linear-gradient(135deg, #ffc06b, #ff8a3d);
-  box-shadow:
-    0 8rpx 22rpx rgba(255, 138, 61, 0.42),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.45),
-    inset 0 -2rpx 6rpx rgba(0, 0, 0, 0.18);
-}
-
-/* 激活态（已点赞/已追剧）：渐变提亮 + 外发光增强 */
-.is-favorite.active {
-  background: linear-gradient(135deg, #ff5c7c, #e61742);
-  box-shadow:
-    0 8rpx 28rpx rgba(255, 45, 85, 0.65),
-    0 0 14rpx rgba(255, 92, 124, 0.5),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
-}
-
-.is-like.active {
-  background: linear-gradient(135deg, #ffd257, #f08c1a);
-  box-shadow:
-    0 8rpx 28rpx rgba(240, 140, 26, 0.65),
-    0 0 14rpx rgba(255, 200, 80, 0.55),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.55);
-}
-
-.action-label {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 20rpx;
+.action text {
+  margin-top: 8rpx;
+  font-size: 26rpx;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.7);
 }
 
-.action-num {
-  letter-spacing: 0.5rpx;
+.action u-icon {
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.6);
 }
 
 .bottom-info {
-  position: fixed;
+  position: absolute;
   left: 0;
   right: 140rpx;
-  bottom: calc(158rpx + env(safe-area-inset-bottom));
+  bottom: 60rpx;
   z-index: 14;
   padding: 0 24rpx;
   pointer-events: none;
+  touch-action: none;
+}
+
+.bottom-info .episode-pill,
+.bottom-info .video-progress-bar {
+  pointer-events: auto;
 }
 
 .info-title {
@@ -1506,14 +1610,41 @@ page,
   white-space: nowrap;
 }
 
+.info-episode-no {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: rgba(247, 198, 106, 0.9);
+  margin-left: 4rpx;
+}
+
 .info-desc {
+  flex: 1;
   margin-top: 6rpx;
   font-size: 26rpx;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.85);
   text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.7);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+.info-desc.expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+  white-space: normal;
+}
+.desc-row {
+  display: flex;
+  align-items: flex-end;
+}
+.desc-more-btn {
+  flex-shrink: 0;
+  margin-left: 8rpx;
+  font-size: 24rpx;
+  color: #f7c66a;
+  text-decoration: underline;
   white-space: nowrap;
 }
 
@@ -1557,21 +1688,34 @@ page,
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background-color: #111;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+  background-color: #0b0b10;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.06);
 }
 
 .comments-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx 24rpx 16rpx;
+  padding: 16rpx 24rpx 10rpx;
+  flex-shrink: 0;
 }
 
 .comments-panel-title {
   font-size: 28rpx;
   font-weight: 800;
   color: #fff;
+}
+
+.comments-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  flex-shrink: 0;
+}
+
+.comments-panel-more {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .comments-total-num {
@@ -1582,9 +1726,10 @@ page,
 }
 
 .comments-panel-close {
-  font-size: 36rpx;
+  font-size: 34rpx;
   line-height: 1;
   color: rgba(255, 255, 255, 0.6);
+  padding: 4rpx 10rpx;
 }
 
 .comments-panel-close:active {
@@ -1598,10 +1743,15 @@ page,
 }
 
 .comments-empty {
-  padding: 60rpx 0;
+  padding: 40rpx 0;
   text-align: center;
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.comments-empty-icon {
+  font-size: 48rpx;
+  margin-bottom: 10rpx;
 }
 
 .comment-item {

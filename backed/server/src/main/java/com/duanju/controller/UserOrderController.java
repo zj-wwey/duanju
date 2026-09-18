@@ -76,6 +76,11 @@ public class UserOrderController {
         return R.ok(Map.of("orderNo", orderNo));
     }
 
+    @PostMapping("/orders/{orderNo}/cancel")
+    public R<Map<String, Object>> cancelOrder(@PathVariable String orderNo) {
+        return R.ok(orderService.cancelOrder(orderNo));
+    }
+
     @PostMapping("/orders")
     public R<Map<String, Object>> createOrder(@Valid @RequestBody CreateOrderRequest request) {
         return R.ok(orderService.createOrder(request.productId(), request.payChannel()));

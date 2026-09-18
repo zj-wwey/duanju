@@ -37,22 +37,24 @@
       "style": {
         "navigationBarTitleText": "Theater",
         "enablePullDownRefresh": true,
-        "navigationBarBackgroundColor": "#F7F4ED",
-        "navigationBarTextStyle": "black"
+        "navigationBarBackgroundColor": "#14161f",
+        "navigationBarTextStyle": "white"
       }
     },
     {
       "path": "pages/store/store",
       "style": {
         "navigationBarTitleText": "Store",
-        "navigationBarBackgroundColor": "#080A10",
+        "navigationBarBackgroundColor": "#14161f",
         "navigationBarTextStyle": "white"
       }
     },
     {
       "path": "pages/mine/mine",
       "style": {
-        "navigationBarTitleText": "Profile"
+        "navigationBarTitleText": "Profile",
+        "navigationBarBackgroundColor": "#14161f",
+        "navigationBarTextStyle": "white"
       }
     },
     {

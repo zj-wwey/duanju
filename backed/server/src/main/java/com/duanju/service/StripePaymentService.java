@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -107,6 +109,42 @@ public class StripePaymentService {
         return enabled;
     }
 
+    /** 关闭 Stripe Checkout Session,防止用户继续支付。
+     * 用 RestTemplate 直接调 Stripe REST API,绕开 Java SDK 版本兼容问题
+     * (SDK 静态方法签名在 26.x → 33.x 频繁变更,但 REST API 永远稳定)。 */
+    public void expireCheckoutSession(String sessionId) {
+        if (!enabled || sessionId == null || sessionId.isBlank()) {
+            return;
+        }
+        try {
+            RestTemplate rt = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.setBasicAuth("", secretKey);  // Stripe REST API: Bearer token = Basic auth with empty username
+            // 其实直接拼 Authorization header 更直观
+            headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + secretKey);
+
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            String url = "https://api.stripe.com/v1/checkout/sessions/" + sessionId + "/expire";
+            ResponseEntity<String> resp = rt.exchange(url, HttpMethod.POST, entity, String.class);
+
+            if (resp.getStatusCode().is2xxSuccessful()) {
+                log.info("Stripe expireCheckoutSession: ok, sessionId={}, status=expired", sessionId);
+            } else {
+                log.warn("Stripe expireCheckoutSession: non-2xx, sessionId={}, status={}",
+                        sessionId, resp.getStatusCode());
+            }
+        } catch (Exception ex) {
+            String msg = ex.getMessage();
+            // 404 resource_missing: session 已不存在,不算错误
+            if (msg != null && msg.contains("404")) {
+                log.info("Stripe expireCheckoutSession: session already gone (404), sessionId={}", sessionId);
+            } else {
+                throw new IllegalStateException("failed to expire Stripe session: " + msg, ex);
+            }
+        }
+    }
+
     /**
      * 为已创建的 PENDING 订单创建 Stripe Checkout Session,返回 session_url 让前端跳转。
      * 同时把 stripeSessionId 写回 PENDING 订单,用于 webhook 反查。
@@ -157,14 +195,25 @@ public class StripePaymentService {
         log.info("Stripe: using pre-created Price={} for productId={}", stripePriceId, product.getId());
 
         // 2. 创建 Checkout Session
+        //    关键:metadata 加在 Session 上不会自动继承到 PaymentIntent,
+        //    必须显式用 PaymentIntentData 把 metadata 透传到 PI,
+        //    否则 payment_intent.succeeded webhook 里 pi.getMetadata() 为 null,订单无法入账
+        Map<String, String> sessionMeta = Map.of(
+                "orderNo", orderNo,
+                "productId", String.valueOf(product.getId()),
+                "userId", String.valueOf(pending.getUserId())
+        );
+        SessionCreateParams.PaymentIntentData piData = SessionCreateParams.PaymentIntentData.builder()
+                .setCaptureMethod(SessionCreateParams.PaymentIntentData.CaptureMethod.AUTOMATIC)
+                .putAllMetadata(sessionMeta)
+                .build();
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .setSuccessUrl(buildRedirectUrl(successUrl, orderNo, true))
                 .setCancelUrl(buildRedirectUrl(cancelUrl, orderNo, false))
                 .setClientReferenceId(orderNo)
-                .putMetadata("orderNo", orderNo)
-                .putMetadata("productId", String.valueOf(product.getId()))
-                .putMetadata("userId", String.valueOf(pending.getUserId()))
+                .putAllMetadata(sessionMeta)
+                .setPaymentIntentData(piData)
                 .addLineItem(lineItem)
                 .build();
         Session session;

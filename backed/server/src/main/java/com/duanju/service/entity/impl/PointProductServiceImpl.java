@@ -39,11 +39,11 @@ public class PointProductServiceImpl extends ServiceImpl<PointProductMapper, Poi
             item.put("bonusPoints", product.getBonusPoints());
             item.put("priceCents", product.getPriceCents());
             item.put("originalPriceCents", product.getOriginalPriceCents());
-            item.put("packageType", product.getPackageType());
             item.put("durationDays", product.getDurationDays());
             item.put("tagText", product.getTagText());
             item.put("coverUrl", product.getCoverUrl());
-            item.put("productCategory", product.getProductCategory());
+            item.put("productCategory", product.getProductCategory() != null ? product.getProductCategory() : "RECHARGE");
+            item.put("packageType", product.getPackageType() != null ? product.getPackageType() : "RECHARGE");
             item.put("membershipLevel", product.getMembershipLevel());
             item.put("firstPurchaseBonus", product.getFirstPurchaseBonus());
             item.put("dailyLimit", product.getDailyLimit());

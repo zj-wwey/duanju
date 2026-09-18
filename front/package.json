@@ -16,5 +16,8 @@
     "i18n:export:admin": "node ../scripts/export-translations.js --namespace admin",
     "i18n:import": "node ../scripts/import-translations.js --file",
     "i18n:import:dry-run": "node ../scripts/import-translations.js --file --dry-run"
+  },
+  "dependencies": {
+    "hls.js": "^1.7.3"
   }
 }

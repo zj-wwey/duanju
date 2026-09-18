@@ -42,8 +42,20 @@ function resolveDevBaseUrl() {
   // #endif
 }
 
+// 生产构建时的 API 地址
+// H5 与站点同源部署,用相对路径 /api 即可;
+// App 原生包 (APP-PLUS) 的 uni.request 必须使用完整域名,相对路径无法解析。
+function resolveProdBaseUrl() {
+  // #ifdef APP-PLUS
+  return 'https://srv.marastel.com/api'
+  // #endif
+  // #ifndef APP-PLUS
+  return '/api'
+  // #endif
+}
+
 const config = {
-  API_BASE_URL: isDev ? resolveDevBaseUrl() : '/api'
+  API_BASE_URL: isDev ? resolveDevBaseUrl() : resolveProdBaseUrl()
 }
 
 export default config

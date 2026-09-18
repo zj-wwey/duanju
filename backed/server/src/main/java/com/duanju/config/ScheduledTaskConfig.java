@@ -27,7 +27,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 public class ScheduledTaskConfig {
 
     private static final Logger log = LoggerFactory.getLogger(ScheduledTaskConfig.class);
-    private static final int PENDING_ORDER_EXPIRE_MINUTES = 30;
+    private static final int PENDING_ORDER_EXPIRE_MINUTES = 5;
 
     private final MembershipService membershipService;
     private final PointExpireService pointExpireService;

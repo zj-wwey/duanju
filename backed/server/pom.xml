@@ -57,7 +57,7 @@
         <dependency>
             <groupId>com.stripe</groupId>
             <artifactId>stripe-java</artifactId>
-            <version>26.9.0</version>
+            <version>33.4.2</version>
         </dependency>
         <!-- Google OAuth2:从 Service Account JSON 获取 access token,用于 Google Play Developer API 二次验签 -->
         <dependency>

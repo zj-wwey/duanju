@@ -11,6 +11,12 @@ Vue.use(uView);
 import api from './utils/api.js'
 Vue.prototype.$api = api
 
+// H5 端：启动即预加载自托管 hls.js（m3u8 播放依赖），避免首播时才下载
+// #ifdef H5
+import { preloadHls } from './utils/hls-adapter.js'
+preloadHls()
+// #endif
+
 // mobile 布局覆盖样式含大量后代选择器，App.vue 引入会触发 nvue(weex) 样式检查报错；
 // 放在 main.js 由 webpack 注入 vue 页面，不参与 nvue 样式编译
 import './static/css/mobile-layout.css'

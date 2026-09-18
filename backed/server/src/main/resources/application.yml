@@ -82,30 +82,30 @@ duanju:
     webhook-auth-token: ${APPLE_WEBHOOK_AUTH_TOKEN:}
   stripe:
     # 是否启用 Stripe Web 支付
-    enabled: ${STRIPE_ENABLED:false}
+    enabled: ${STRIPE_ENABLED:true}
     # Stripe 账号 Secret Key (sk_ 开头),生产必须通过环境变量注入,禁止写进仓库
-    secret-key: ${STRIPE_SECRET_KEY:}
+    secret-key: ${STRIPE_SECRET_KEY:sk_test_51U5gMBGybsJxjPhBdBaaaRD8D09i6KR352BnyczaL9xceAkgXlSaqHLHffTuCQkh9HdbnVcGhQHTyBesM3JakYGz00Kl1zA9jm}
     # Stripe Webhook 签名密钥 (whsec_ 开头),用于校验 Stripe-Signature header
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_HlpMxsNFf9fklQaL6H503DxzO4LTME3D}
     # 支付成功后前端跳转地址 (Checkout Session success_url,会追加 ?orderNo=xxx&status=success)
-    success-url: ${STRIPE_SUCCESS_URL:}
+    success-url: ${STRIPE_SUCCESS_URL:https://srv.marastel.com/api/webhooks/stripe/return}
     # 用户取消支付后跳转地址 (cancel_url,会追加 ?orderNo=xxx&status=cancelled)
-    cancel-url: ${STRIPE_CANCEL_URL:}
+    cancel-url: ${STRIPE_CANCEL_URL:https://srv.marastel.com/api/webhooks/stripe/return}
   paypal:
     # 是否启用 PayPal Web 支付
-    enabled: ${PAYPAL_ENABLED:false}
-    # PayPal Developer Console → Apps → App Credentials → Client ID
-    client-id: ${PAYPAL_CLIENT_ID:}
-    # PayPal Developer Console → Apps → App Credentials → Secret
-    client-secret: ${PAYPAL_CLIENT_SECRET:}
+    enabled: ${PAYPAL_ENABLED:true}
+    # PayPal Developer Console → Apps → App Credentials → Client ID (默认沙箱值,生产换环境变量)
+    client-id: ${PAYPAL_CLIENT_ID:BAAxUjg1-2o8EAzJT7rWF8v988hWfc56gZHe74VEKtZf0NV4tnuRQjH7hzQUPxShk5wc4ww5PNoQ-bCf00}
+    # PayPal Developer Console → Apps → App Credentials → Secret (默认沙箱值,生产换环境变量)
+    client-secret: ${PAYPAL_CLIENT_SECRET:EFMLDgvCsqJQJT76iQbNpiPg4lYUU6FV503cDEaGVgvXO66EcNS63ybBLr-bU4Zfwz1qEhkmpdZNRjek}
     # PayPal Webhook ID,用于验证 webhook 事件来源
-    webhook-id: ${PAYPAL_WEBHOOK_ID:}
+    webhook-id: ${PAYPAL_WEBHOOK_ID:8YA65799K2183661K}
     # PayPal API 基础路径 (沙盒: https://api-m.sandbox.paypal.com, 生产: https://api-m.paypal.com)
     base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}
-    # 支付成功后前端跳转地址,会追加 ?orderNo=xxx&status=success
-    success-url: ${PAYPAL_SUCCESS_URL:}
-    # 用户取消支付后跳转地址,会追加 ?orderNo=xxx&status=cancelled
-    cancel-url: ${PAYPAL_CANCEL_URL:}
+    # 支付成功后前端跳转地址,PayPal 会自动追加 &token=PAYPAL_ORDER_ID
+    success-url: ${PAYPAL_SUCCESS_URL:https://srv.marastel.com/api/webhooks/stripe/return?status=success}
+    # 用户取消支付后跳转地址
+    cancel-url: ${PAYPAL_CANCEL_URL:https://srv.marastel.com/api/webhooks/stripe/return?status=cancelled}
   google-play:
     # 是否启用 Google Play IAB (本地验签 + RTDN 被动接收)
     enabled: ${GOOGLE_PLAY_ENABLED:false}

@@ -24,4 +24,10 @@ page {
                "Microsoft YaHei", "Hiragino Sans GB",
                "Segoe UI", sans-serif;
 }
+/* #ifdef H5 */
+/* H5 端整体放大 4%，字体和图标同步放大，不影响底部原生 tabbar */
+page {
+  zoom: 1.04;
+}
+/* #endif */
 </style>

@@ -617,9 +617,57 @@ public class OrderService {
 
 
     /**
-     * 用户软删除自己的终态订单 (CANCELLED / CLOSED / REFUNDED)。
-     * 涉及支付的订单 (PENDING / PAID) 不允许删除,避免影响财务对账。
-     * 已删除订单对用户侧查询不可见,但管理员仍可查看。
+     * 用户取消自己的 PENDING 订单。
+     * Stripe: 同时调用 Checkout Session.expire() 关闭 Stripe 侧会话,防止用户继续支付。
+     * PayPal: 同时调用 PayPal Order.cancel()。
+     * 其他渠道只改本地状态。
+     */
+    @Transactional
+    public Map<String, Object> cancelOrder(String orderNo) {
+        UserOrder order = userOrderService.lambdaQuery()
+                .eq(UserOrder::getOrderNo, orderNo)
+                .last("limit 1")
+                .one();
+        if (order == null) {
+            throw new IllegalArgumentException("order not found");
+        }
+        if (!PrincipalHolder.userId().equals(order.getUserId())) {
+            throw new IllegalArgumentException("order not found");
+        }
+        if (order.getDeletedAt() != null) {
+            throw new IllegalArgumentException("order not found");
+        }
+        String s = order.getStatus();
+        if ("CANCELLED".equals(s) || "CLOSED".equals(s)) {
+            throw new IllegalArgumentException("订单已取消,无需重复操作");
+        }
+        if ("PAID".equals(s) || "REFUNDED".equals(s)) {
+            throw new IllegalArgumentException("已支付/已退款订单不支持取消,如需退款请联系客服");
+        }
+        // PENDING → CANCELLED
+        userOrderService.lambdaUpdate()
+                .set(UserOrder::getStatus, "CANCELLED")
+                .eq(UserOrder::getId, order.getId())
+                .eq(UserOrder::getStatus, "PENDING")
+                .update();
+
+        // Stripe: 主动关闭 Checkout Session,防止用户用旧 session_url 继续支付
+        if ("STRIPE".equals(order.getPayChannel()) && order.getStripeSessionId() != null) {
+            try {
+                stripePaymentService.expireCheckoutSession(order.getStripeSessionId());
+            } catch (Exception ex) {
+                // expire 失败不影响本地订单状态,Stripe 端有 30 分钟自动过期兜底
+                log.warn("cancelOrder: fail to expire Stripe session (non-fatal), orderNo={}, sessionId={}, err={}",
+                        orderNo, order.getStripeSessionId(), ex.getMessage());
+            }
+        }
+        return Map.of("orderNo", orderNo, "status", "CANCELLED");
+    }
+
+    /**
+     * 用户软删除自己的订单 (PAID / CANCELLED / CLOSED / REFUNDED 均可)。
+     * PENDING 订单禁止删除 (应先 cancelOrder)。
+     * 软删除:deleted_at 置非空,用户侧不可见,管理员仍可查看。
      */
     public void deleteOrder(String orderNo) {
         UserOrder order = userOrderService.lambdaQuery()
@@ -635,14 +683,9 @@ public class OrderService {
         if (order.getDeletedAt() != null) {
             return;
         }
-        String s = order.getStatus();
-        if ("PENDING".equals(s)) {
-            throw new IllegalArgumentException("待支付订单不支持删除,请先完成支付或等待自动取消");
+        if ("PENDING".equals(order.getStatus())) {
+            throw new IllegalArgumentException("待支付订单不支持删除,请先取消支付");
         }
-        if ("PAID".equals(s)) {
-            throw new IllegalArgumentException("已支付订单不支持删除");
-        }
-        // 终态订单 (CANCELLED / CLOSED / REFUNDED) 允许软删除
         userOrderService.lambdaUpdate()
                 .set(UserOrder::getDeletedAt, LocalDateTime.now())
                 .eq(UserOrder::getId, order.getId())

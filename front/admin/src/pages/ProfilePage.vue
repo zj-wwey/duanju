@@ -170,7 +170,7 @@
 
 <script setup>
 import { computed, defineComponent, h, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useStreamI18n } from '../locales/streamI18n.js'
 import { ElMessage } from 'element-plus'
 import DramaCard from '../components/drama/DramaCard.vue'
@@ -181,6 +181,7 @@ import { useDramaStore } from '../user/store.js'
 import { formatNumber as formatNumberUtil, formatMoney as formatMoneyUtil, formatDate as formatDateUtil, field as fieldUtil } from '../utils/helpers.js'
 
 const router = useRouter()
+const route = useRoute()
 const { t, locale } = useStreamI18n()
 const store = useDramaStore()
 const activePanel = ref('profile')
@@ -288,6 +289,11 @@ const DataTable = defineComponent({
 })
 
 onMounted(async () => {
+  // 支持从其他页面带 ?panel=orders 跳转过来自动切 tab
+  const queryPanel = route.query.panel
+  if (typeof queryPanel === 'string' && queryPanel.trim()) {
+    activePanel.value = queryPanel
+  }
   await loadProfileData()
 })
 

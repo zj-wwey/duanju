@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="page">
     <view v-if="loading" class="state">{{ t('loading') }}</view>
     <template v-else-if="drama">
@@ -17,25 +17,6 @@
       </view>
 
       <view class="section-head">
-        <view class="section-title">{{ t('episodes') }}</view>
-        <button v-if="wholePrice && hasLockedEpisode" class="unlock-all" @click="unlockWhole">{{ t('unlockDrama') }} · {{ wholePrice }}</button>
-      </view>
-
-      <view class="episode-grid">
-        <view
-          v-for="episode in episodes"
-          :key="episode.id"
-          class="episode"
-          :class="{ locked: !episode.unlocked && !episode.videoUrl }"
-          @click="playEpisode(episode)"
-        >
-          <view class="episode-no">{{ episode.episodeNo }}</view>
-          <view class="episode-title">{{ episode.title }}</view>
-          <view class="episode-status">{{ episode.unlocked || episode.videoUrl ? t('unlocked') : episode.pricePoints + ' ' + t('credits') }}</view>
-        </view>
-      </view>
-
-      <view class="section-head">
         <view class="section-title">{{ t('recommend') }}</view>
       </view>
       <view class="recommend">
@@ -44,6 +25,45 @@
           <text>{{ item.title }}</text>
         </view>
       </view>
+
+      <!-- 底部固定选集栏（悬浮于底部 tabbar 之上） -->
+      <view class="episode-dock" @click="showEpisodes = true">
+        <view class="episode-dock-icon">
+          <u-icon name="list-dot" size="42" color="#11100d" />
+        </view>
+        <view class="episode-dock-text">
+          <view class="episode-dock-title">{{ t('episodes') }}</view>
+          <view class="episode-dock-sub">{{ episodeTotalText || ('共 ' + episodes.length + ' 集') }}</view>
+        </view>
+        <view class="episode-dock-go">
+          <u-icon name="arrow-up" size="32" color="#11100d" />
+        </view>
+      </view>
+
+      <!-- 选集弹出层 -->
+      <u-popup v-model="showEpisodes" mode="bottom" border-radius="24" :closeable="true">
+        <view class="episode-sheet">
+          <view class="section-head episode-sheet-head">
+            <view class="section-title">{{ t('episodes') }}</view>
+            <button v-if="wholePrice && hasLockedEpisode" class="unlock-all" @click="unlockWhole">{{ t('unlockDrama') }} · {{ wholePrice }}</button>
+          </view>
+          <scroll-view scroll-y class="episode-sheet-scroll">
+            <view class="episode-grid">
+              <view
+                v-for="episode in episodes"
+                :key="episode.id"
+                class="episode"
+                :class="{ locked: !episode.unlocked && !episode.videoUrl }"
+                @click="playEpisode(episode)"
+              >
+                <view class="episode-no">{{ episode.episodeNo }}</view>
+                <view class="episode-title">{{ episode.title }}</view>
+                <view class="episode-status">{{ episode.unlocked || episode.videoUrl ? t('unlocked') : episode.pricePoints + ' ' + t('credits') }}</view>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+      </u-popup>
     </template>
     <view v-else class="state">{{ t('noTitles') }}</view>
     <app-tab-bar />
@@ -63,6 +83,7 @@ export default {
       episodes: [],
       recommendations: [],
       loading: true,
+      showEpisodes: false,
       locale: getLocale()
     }
   },
@@ -119,6 +140,7 @@ export default {
     },
     playEpisode(episode) {
       if (!episode) return
+      this.showEpisodes = false
       uni.navigateTo({ url: '/pages/player/player?dramaId=' + this.id + '&episodeId=' + episode.id })
     },
     async toggleFavorite() {
@@ -425,5 +447,90 @@ page,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 给底部固定选集栏 + tabbar 留位，避免推荐内容被遮挡 */
+.page {
+  padding-bottom: calc(220rpx + env(safe-area-inset-bottom));
+}
+
+/* ===== 底部固定选集栏 ===== */
+.episode-dock {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(112rpx + env(safe-area-inset-bottom));
+  z-index: 998;
+  display: flex;
+  align-items: center;
+  height: 96rpx;
+  padding: 0 24rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #ffe0a1, #f3b84d);
+  box-shadow:
+    0 12rpx 30rpx rgba(247, 198, 106, 0.4),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.55);
+  transition: transform 0.18s ease;
+}
+
+.episode-dock:active {
+  transform: scale(0.97);
+}
+
+.episode-dock-icon {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 16, 13, 0.12);
+}
+
+.episode-dock-text {
+  flex: 1;
+  margin-left: 18rpx;
+  min-width: 0;
+}
+
+.episode-dock-title {
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #11100d;
+  line-height: 1.2;
+}
+
+.episode-dock-sub {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: rgba(17, 16, 13, 0.66);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.episode-dock-go {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== 选集弹出层 ===== */
+.episode-sheet {
+  background: #0d0f15;
+  color: #fff;
+  padding: 12rpx 24rpx calc(32rpx + env(safe-area-inset-bottom));
+  border-radius: 24rpx;
+}
+
+.episode-sheet-head {
+  margin-top: 12rpx;
+}
+
+.episode-sheet-scroll {
+  max-height: 60vh;
 }
 </style>

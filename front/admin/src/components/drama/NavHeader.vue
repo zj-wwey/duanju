@@ -1,7 +1,16 @@
 <template>
   <header class="stream-nav app-nav">
     <button class="stream-logo" type="button" @click="$emit('home')">
-      <span></span>
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="starGradNav" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#D4AF68"/>
+            <stop offset="100%" stop-color="#C86D26"/>
+          </linearGradient>
+        </defs>
+        <rect width="64" height="64" rx="14" fill="#1E1C19" stroke="url(#starGradNav)" stroke-width="2"/>
+        <path d="M32 14 L35.5 26 L48 26 L38 33 L42 45 L32 37 L22 45 L26 33 L16 26 L28.5 26 Z" fill="url(#starGradNav)"/>
+      </svg>
       <strong>{{ brand }}</strong>
     </button>
 

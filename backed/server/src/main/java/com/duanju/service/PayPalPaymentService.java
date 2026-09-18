@@ -127,10 +127,10 @@ public class PayPalPaymentService {
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             headers.setBasicAuth(clientId, clientSecret);
 
-            Map<String, String> body = new HashMap<>();
-            body.put("grant_type", "client_credentials");
+            org.springframework.util.LinkedMultiValueMap<String, String> body = new org.springframework.util.LinkedMultiValueMap<>();
+            body.add("grant_type", "client_credentials");
 
-            HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
+            HttpEntity<org.springframework.util.LinkedMultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
             ResponseEntity<String> response = restTemplate.postForEntity(
                     baseUrl + "/v1/oauth2/token", request, String.class);
 
@@ -202,11 +202,14 @@ public class PayPalPaymentService {
         amount.put("value", String.format("%.2f", amountValue));
         purchaseUnit.put("amount", amount);
 
-        Map<String, Object> payee = new HashMap<>();
-        if (product.getStoreProductId() != null && !product.getStoreProductId().isBlank()) {
-            payee.put("merchant_id", product.getStoreProductId());
+        // storeProductId 可能存的是 Stripe Price ID (price_ 开头),不能当 PayPal merchant_id 用
+        // 只有非 price_ 前缀的值才视为 PayPal merchant_id (格式: 8-12 位字母数字)
+        String storeId = product.getStoreProductId();
+        if (storeId != null && !storeId.isBlank() && !storeId.startsWith("price_")) {
+            Map<String, Object> payee = new HashMap<>();
+            payee.put("merchant_id", storeId);
+            purchaseUnit.put("payee", payee);
         }
-        purchaseUnit.put("payee", payee);
 
         orderBody.put("purchase_units", new Map[]{purchaseUnit});
 
