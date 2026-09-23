@@ -1,16 +1,8 @@
 # ============================================================
-# 短剧平台 .gitignore
+# 短剧平台 .gitignore（完整项目交接版）
+# 仅排除构建产物、依赖缓存、IDE文件、数据目录
+# 保留所有源码、配置、图片、文档等项目必需文件
 # ============================================================
-
-# ====== 敏感配置（绝对不能提交）======
-.env
-.env.*
-nginx/ssl/
-nginx/
-*.pem
-*.key
-*.p12
-*.jks
 
 # ====== Docker 部署产生的数据目录 ======
 mysql-data/
@@ -21,7 +13,7 @@ admin-dist/
 h5-dist/
 backups/
 
-# ====== Java / Maven 后端 ======
+# ====== Java / Maven 构建产物 ======
 backed/server/target/
 backed/server/logs/
 backed/server/uploads/
@@ -30,7 +22,6 @@ backed/uploads/
 *.jar
 *.war
 *.ear
-*.log
 hs_err_pid*
 
 # ====== 前端构建产物 ======
@@ -86,37 +77,14 @@ front/uniapp/manifest.local.json
 *.tgz
 *.7z
 
-# ====== 非代码文件（仅保留源码）======
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-docs/
-*.conf
-docker-compose.yml
-Dockerfile
-.dockerignore
-kyc-site/nginx/
-kyc-site/server/data/
-kyc-site/public/robots.txt
+# ====== SSL 证书（敏感，不提交）======
+*.pem
+*.key
+*.p12
+*.jks
+nginx/ssl/
 
-# ====== 图片 / 二进制资源 ======
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.bmp
-*.ico
-*.svg
-*.webp
-
-# ====== 文档 ======
-*.md
-
-# ====== SEO / 站点资源 ======
-sitemap.xml
-robots.txt
-
-# ====== 其他 ======
+# ====== 其他临时文件 ======
 *.tmp
 *.temp
 .cache/

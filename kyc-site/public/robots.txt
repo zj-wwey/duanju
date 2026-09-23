@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://star.marastel.com/sitemap.xml
