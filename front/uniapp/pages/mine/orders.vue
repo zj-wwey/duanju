@@ -66,6 +66,7 @@ export default {
           order_no: item.order_no || item.orderNo,
           product_name: item.product_name || item.productName,
           amount_cents: item.amount_cents || item.amountCents,
+          pay_channel: item.pay_channel || item.payChannel,
           created_at: item.created_at || item.createdAt
         }))
       } catch (err) {
@@ -108,21 +109,26 @@ export default {
     },
     async onPay(item) {
       const orderNo = item.order_no || item.orderNo || item.id
+      const channel = (item.pay_channel || item.payChannel || 'STRIPE').toUpperCase()
       try {
-        uni.showLoading({ title: '正在准备支付...' })
-        // 复用后端 stripe-checkout 接口创建/获取 session_url
-        const data = await api.stripeCheckout(orderNo)
+        uni.showLoading({ title: '正在准备支付...', mask: true })
+        const data = channel === 'PAYPAL'
+          ? await api.paypalCheckout(orderNo)
+          : await api.stripeCheckout(orderNo)
         uni.hideLoading()
-        if (data && data.session_url) {
+        const payUrl = data && (data.session_url || data.sessionUrl || data.approve_url || data.approveUrl)
+        if (payUrl) {
           uni.navigateTo({
-            url: '/pages/webview/webview?url=' + encodeURIComponent(data.session_url) + '&orderNo=' + encodeURIComponent(orderNo)
+            url: '/pages/webview/webview?url=' + encodeURIComponent(payUrl) + '&orderNo=' + encodeURIComponent(orderNo)
           })
         } else {
           uni.showToast({ title: '支付链接获取失败', icon: 'none' })
         }
       } catch (err) {
         uni.hideLoading()
-        uni.showToast({ title: err.message || '支付失败', icon: 'none' })
+        setTimeout(() => {
+          uni.showToast({ title: err.message || '支付失败', icon: 'none' })
+        }, 200)
       }
     },
     onCancel(item) {
