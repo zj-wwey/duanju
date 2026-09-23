@@ -5,9 +5,8 @@
 # ====== 敏感配置（绝对不能提交）======
 .env
 .env.*
-!.env.example
-!.env.production
 nginx/ssl/
+nginx/
 *.pem
 *.key
 *.p12
@@ -86,6 +85,15 @@ front/uniapp/manifest.local.json
 *.zip
 *.tgz
 *.7z
+
+# ====== 非代码文件（仅保留源码）======
+package-lock.json
+docs/
+*.conf
+kyc-site/docker-compose.yml
+kyc-site/nginx/
+kyc-site/server/data/
+kyc-site/public/robots.txt
 
 # ====== 其他 ======
 *.tmp
