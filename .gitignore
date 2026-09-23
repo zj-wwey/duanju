@@ -88,12 +88,33 @@ front/uniapp/manifest.local.json
 
 # ====== 非代码文件（仅保留源码）======
 package-lock.json
+yarn.lock
+pnpm-lock.yaml
 docs/
 *.conf
-kyc-site/docker-compose.yml
+docker-compose.yml
+Dockerfile
+.dockerignore
 kyc-site/nginx/
 kyc-site/server/data/
 kyc-site/public/robots.txt
+
+# ====== 图片 / 二进制资源 ======
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.ico
+*.svg
+*.webp
+
+# ====== 文档 ======
+*.md
+
+# ====== SEO / 站点资源 ======
+sitemap.xml
+robots.txt
 
 # ====== 其他 ======
 *.tmp
