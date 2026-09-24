@@ -709,9 +709,14 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #121317;
-  background: linear-gradient(135deg, #ffe0a1, #d9962f);
-  font-weight: 800;
+  overflow: hidden;
+}
+
+.login-mark img,
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .login-mark {

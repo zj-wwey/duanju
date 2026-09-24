@@ -27,7 +27,9 @@
       </div>
 
       <el-form class="login-box" :model="loginForm" label-position="top" @submit.prevent="submitAuth">
-        <div class="login-mark">SD</div>
+        <div class="login-mark">
+          <img src="/favicon.svg" alt="logo" />
+        </div>
         <h1>{{ streamT('auth.loginTitle') }}</h1>
         <p>{{ loginRole === 'admin' ? streamT('auth.adminLoginSubtitle') : streamT('auth.userLoginSubtitle') }}</p>
         <el-segmented v-if="authMode === 'login'" v-model="loginRole" class="auth-role" :options="loginRoleOptions" />
@@ -67,7 +69,9 @@
   <el-container v-else class="shell">
     <el-aside width="240px">
       <div class="brand">
-        <span class="brand-mark">SD</span>
+        <span class="brand-mark">
+          <img src="/favicon.svg" alt="logo" />
+        </span>
         <span>{{ t('appName') }}</span>
       </div>
       <el-menu :default-active="view" :default-openeds="openedMenus" @select="selectView">
@@ -3441,7 +3445,7 @@ async function uploadSingleEpisode(ep) {
   let lastLoaded = 0
   const onProgress = (e) => {
     if (e.lengthComputable) {
-      ep.progress = Math.min(99, Math.round((e.loaded / e.total) * 100))
+      ep.progress = Math.min(100, Math.round((e.loaded / e.total) * 100))
       const now = Date.now()
       const dt = (now - lastTime) / 1000
       const dl = e.loaded - lastLoaded

@@ -438,7 +438,7 @@ export const api = {
       // L3-fix (C): onerror 加 ORB 兜底: 字节全发出去 + status=0 且 loaded==file.size => 真实是 R2 2xx,Chrome 把 body 吞了报 ORB,按成功处理。
       xhr.onerror = () => {
         const loaded = xhr.upload && xhr.upload.loaded ? xhr.upload.loaded : totalSent
-        if (file && typeof file.size === 'number' && loaded === file.size && file.size > 0) {
+        if (file && typeof file.size === 'number' && loaded >= file.size && file.size > 0) {
           // 典型 ORB:所有字节都发到 R2,R2 返回 200,但 Chrome 在 V8 层把 Response Body 吃掉抛 ORB 为 onerror。
           // 这种情况按成功处理(R2 桶内对象已真实存在且字节数一致,不影响后续落库播放)。
           // 给 onProgress 一个 100% 的假事件,确保前端进度条不卡 99%。

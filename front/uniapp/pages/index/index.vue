@@ -61,6 +61,7 @@
               @ended="ended"
               @error="videoError"
               @fullscreenchange="onFullScreenChange"
+              @loadedmetadata="onVideoLoadedMetadata"
             >
               <cover-view class="video-tap-area" @tap="togglePlayback(item)"></cover-view>
               <!-- 点击视频时的播放/暂停反馈图标（cover-view 才能盖在 APP 原生 video 上） -->
@@ -147,7 +148,7 @@
             </view>
 
             <!-- 全屏按钮：药丸样式，视频下方居中 -->
-            <view v-if="index === current && !isFullScreen && !showCommentPanel" class="fullscreen-pill" @click.stop="toggleFullScreen">
+            <view v-if="index === current && !isFullScreen && !showCommentPanel && isLandscapeVideo" class="fullscreen-pill" @click.stop="toggleFullScreen">
               <text class="fullscreen-pill-icon">⛶</text>
               <text class="fullscreen-pill-text">全屏观看</text>
             </view>
@@ -352,6 +353,7 @@ export default {
       playRetryCount: 0,
       isLandscape: false,
       isFullScreen: false,
+      isLandscapeVideo: false,
       windowHeight: 0,
       windowWidth: 0,
       boundaryHintTimer: null,
@@ -1177,6 +1179,13 @@ export default {
     },
     onFullScreenChange(e) {
       this.isFullScreen = !!(e.detail && e.detail.fullScreen)
+    },
+    onVideoLoadedMetadata(e) {
+      const w = e.detail && e.detail.width
+      const h = e.detail && e.detail.height
+      if (w && h) {
+        this.isLandscapeVideo = w > h
+      }
     },
     _showPlayHint(type) {
       this.playHint = type
